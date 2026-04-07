@@ -1,0 +1,224 @@
+.welcome {
+  min-height: 100vh;
+  height: 100vh;
+  background-color: #fafbfc;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Nav */
+.welcome-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 80px;
+  flex-shrink: 0;
+}
+
+.welcome-nav-logo {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1f36;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.welcome-nav-step {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+
+/* Progress bar */
+.welcome-progress-track {
+  position: absolute;
+  top: 72px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: #e8edf2;
+}
+
+.welcome-progress-bar {
+  width: 480px;
+  height: 3px;
+  background-color: #3b82f6;
+  border-top-right-radius: 3px;
+  border-bottom-right-radius: 3px;
+}
+
+/* Content */
+.welcome-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 0 80px;
+}
+
+.welcome-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 480px;
+  width: 100%;
+  gap: 32px;
+}
+
+/* Header */
+.welcome-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.welcome-title {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  color: #1a1f36;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.welcome-subtitle {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: #64748b;
+  line-height: 1.55;
+  text-align: center;
+}
+
+/* Steps */
+.welcome-steps {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 16px;
+}
+
+.welcome-step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.welcome-step-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: #eff6ff;
+}
+
+.welcome-step-text {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: #1a1f36;
+  line-height: 18px;
+}
+
+/* CTA */
+.welcome-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 16px;
+}
+
+.welcome-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50px;
+  padding: 16px 48px;
+  background: linear-gradient(180deg, #4d8ef8 0%, #3566d4 50%, #2a51b8 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 8px 24px -4px rgba(59, 130, 246, 0.3),
+    0 2px 6px rgba(59, 130, 246, 0.15);
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.01em;
+  line-height: 18px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    box-shadow 0.2s;
+}
+
+.welcome-button:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 12px 28px -4px rgba(59, 130, 246, 0.35),
+    0 4px 8px rgba(59, 130, 246, 0.2);
+  text-decoration: none;
+}
+
+.welcome-cta-hint {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #94a3b8;
+  line-height: 16px;
+}
+
+/* Decorative elements */
+.welcome-shark-ghost {
+  position: absolute;
+  bottom: 70px;
+  left: 80px;
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+.welcome-whale-ghost {
+  position: absolute;
+  bottom: 60px;
+  right: 80px;
+  opacity: 0.07;
+  pointer-events: none;
+}
+
+.welcome-wave {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+.welcome-ocean-gradient {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(
+    180deg,
+    rgba(219, 234, 254, 0) 0%,
+    rgba(219, 234, 254, 0.08) 60%,
+    rgba(191, 219, 254, 0.06) 100%
+  );
+  pointer-events: none;
+}
