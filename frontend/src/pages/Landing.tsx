@@ -136,7 +136,7 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="landing-footer">
-        <span className="landing-footer-copy">&copy; 2025 Boltzmann Lab. All rights reserved.</span>
+        <span className="landing-footer-copy">&copy; 2025 Boltzmann Lab<span className="landing-footer-copy-extra">. All rights reserved.</span></span>
         <div className="landing-footer-links">
           <a href="#" className="landing-footer-link">
             Privacy

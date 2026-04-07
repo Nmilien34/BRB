@@ -1,4 +1,4 @@
-.welcome {
+.paywall {
   min-height: 100vh;
   height: 100vh;
   background-color: #fafbfc;
@@ -9,16 +9,15 @@
 }
 
 /* Nav */
-.welcome-nav {
+.paywall-nav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 24px 80px;
   flex-shrink: 0;
 }
 
-.welcome-nav-logo,
-.welcome-nav-logo:hover {
+.paywall-nav-logo,
+.paywall-nav-logo:hover {
   font-family: 'Geist', system-ui, sans-serif;
   font-size: 20px;
   font-weight: 700;
@@ -27,34 +26,8 @@
   text-decoration: none;
 }
 
-.welcome-nav-step {
-  font-family: 'Geist', system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  color: #94a3b8;
-  letter-spacing: 0.04em;
-}
-
-/* Progress bar */
-.welcome-progress-track {
-  position: absolute;
-  top: 72px;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background-color: #e8edf2;
-}
-
-.welcome-progress-bar {
-  width: 33.33%;
-  height: 3px;
-  background-color: #3b82f6;
-  border-top-right-radius: 3px;
-  border-bottom-right-radius: 3px;
-}
-
 /* Content */
-.welcome-content {
+.paywall-content {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -63,90 +36,113 @@
   padding: 0 80px;
 }
 
-.welcome-card {
+.paywall-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  max-width: 480px;
+  max-width: 420px;
   width: 100%;
-  gap: 32px;
+  gap: 36px;
 }
 
 /* Header */
-.welcome-header {
+.paywall-header {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
 }
 
-.welcome-title {
+.paywall-title {
   font-family: 'Geist', system-ui, sans-serif;
-  font-size: 36px;
+  font-size: 34px;
   font-weight: 700;
   color: #1a1f36;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.03em;
   line-height: 1.15;
   text-align: center;
 }
 
-.welcome-subtitle {
+.paywall-subtitle {
   font-family: 'Geist', system-ui, sans-serif;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 400;
   color: #64748b;
   line-height: 1.55;
   text-align: center;
 }
 
-/* Steps */
-.welcome-steps {
+/* Benefits */
+.paywall-benefits {
   display: flex;
   flex-direction: column;
   width: 100%;
-  gap: 16px;
-}
-
-.welcome-step {
-  display: flex;
-  align-items: center;
   gap: 14px;
 }
 
-.welcome-step-icon {
+.paywall-benefit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.paywall-benefit-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
-  border-radius: 50%;
-  background-color: #eff6ff;
 }
 
-.welcome-step-text {
+.paywall-benefit-text {
   font-family: 'Geist', system-ui, sans-serif;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   color: #1a1f36;
   line-height: 18px;
 }
 
+/* Pricing */
+.paywall-pricing {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.paywall-price {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 40px;
+  font-weight: 700;
+  color: #1a1f36;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.paywall-period {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #94a3b8;
+  line-height: 18px;
+}
+
 /* CTA */
-.welcome-cta {
+.paywall-cta {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
-  gap: 16px;
+  gap: 20px;
 }
 
-.welcome-button {
+.paywall-button {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
   border-radius: 50px;
-  padding: 16px 48px;
+  padding: 16px;
   background: linear-gradient(180deg, #4d8ef8 0%, #3566d4 50%, #2a51b8 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
@@ -166,16 +162,15 @@
     box-shadow 0.2s;
 }
 
-.welcome-button:hover {
+.paywall-button:hover {
   transform: translateY(-1px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
     0 12px 28px -4px rgba(59, 130, 246, 0.35),
     0 4px 8px rgba(59, 130, 246, 0.2);
-  text-decoration: none;
 }
 
-.welcome-cta-hint {
+.paywall-hint {
   font-family: 'Geist', system-ui, sans-serif;
   font-size: 13px;
   font-weight: 400;
@@ -183,86 +178,35 @@
   line-height: 16px;
 }
 
+.paywall-skip {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #3b82f6;
+  line-height: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.paywall-skip:hover {
+  text-decoration: underline;
+}
+
 /* Decorative elements */
-.welcome-shark-ghost {
+.paywall-shark-ghost {
   position: absolute;
-  bottom: 70px;
-  left: 80px;
-  opacity: 0.05;
+  bottom: 55px;
+  left: 65px;
+  opacity: 0.04;
   pointer-events: none;
 }
 
-.welcome-whale-ghost {
+.paywall-whale-ghost {
   position: absolute;
-  bottom: 60px;
-  right: 80px;
-  opacity: 0.07;
+  bottom: 45px;
+  right: 65px;
+  opacity: 0.06;
   pointer-events: none;
-}
-
-.welcome-wave {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  opacity: 0.12;
-  pointer-events: none;
-}
-
-.welcome-ocean-gradient {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 120px;
-  background: linear-gradient(
-    180deg,
-    rgba(219, 234, 254, 0) 0%,
-    rgba(219, 234, 254, 0.08) 60%,
-    rgba(191, 219, 254, 0.06) 100%
-  );
-  pointer-events: none;
-}
-
-/* Mobile */
-@media (max-width: 640px) {
-  .welcome-nav {
-    padding: 16px 24px;
-  }
-
-  .welcome-nav-logo,
-  .welcome-nav-logo:hover {
-    font-size: 18px;
-  }
-
-  .welcome-progress-track {
-    top: 54px;
-  }
-
-  .welcome-content {
-    padding: 0 28px;
-  }
-
-  .welcome-card {
-    max-width: 100%;
-  }
-
-  .welcome-title {
-    font-size: 28px;
-  }
-
-  .welcome-subtitle {
-    font-size: 15px;
-  }
-
-  .welcome-button {
-    width: 100%;
-  }
-
-  .welcome-shark-ghost,
-  .welcome-whale-ghost,
-  .welcome-wave,
-  .welcome-ocean-gradient {
-    display: none;
-  }
 }

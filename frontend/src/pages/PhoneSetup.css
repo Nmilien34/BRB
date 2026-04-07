@@ -1,4 +1,4 @@
-.welcome {
+.phone-setup {
   min-height: 100vh;
   height: 100vh;
   background-color: #fafbfc;
@@ -9,7 +9,7 @@
 }
 
 /* Nav */
-.welcome-nav {
+.phone-setup-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -17,8 +17,8 @@
   flex-shrink: 0;
 }
 
-.welcome-nav-logo,
-.welcome-nav-logo:hover {
+.phone-setup-nav-logo,
+.phone-setup-nav-logo:hover {
   font-family: 'Geist', system-ui, sans-serif;
   font-size: 20px;
   font-weight: 700;
@@ -27,7 +27,7 @@
   text-decoration: none;
 }
 
-.welcome-nav-step {
+.phone-setup-nav-step {
   font-family: 'Geist', system-ui, sans-serif;
   font-size: 13px;
   font-weight: 500;
@@ -36,7 +36,7 @@
 }
 
 /* Progress bar */
-.welcome-progress-track {
+.phone-setup-progress-track {
   position: absolute;
   top: 72px;
   left: 0;
@@ -45,16 +45,14 @@
   background-color: #e8edf2;
 }
 
-.welcome-progress-bar {
-  width: 33.33%;
+.phone-setup-progress-bar {
+  width: 100%;
   height: 3px;
   background-color: #3b82f6;
-  border-top-right-radius: 3px;
-  border-bottom-right-radius: 3px;
 }
 
 /* Content */
-.welcome-content {
+.phone-setup-content {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -63,68 +61,68 @@
   padding: 0 80px;
 }
 
-.welcome-card {
+.phone-setup-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  max-width: 480px;
+  max-width: 440px;
   width: 100%;
-  gap: 32px;
+  gap: 36px;
 }
 
 /* Header */
-.welcome-header {
+.phone-setup-header {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
-.welcome-title {
+.phone-setup-title {
   font-family: 'Geist', system-ui, sans-serif;
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 700;
   color: #1a1f36;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.03em;
   line-height: 1.15;
   text-align: center;
 }
 
-.welcome-subtitle {
+.phone-setup-subtitle {
   font-family: 'Geist', system-ui, sans-serif;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 400;
   color: #64748b;
   line-height: 1.55;
   text-align: center;
 }
 
-/* Steps */
-.welcome-steps {
+/* Phone input */
+.phone-setup-input-row {
   display: flex;
-  flex-direction: column;
   width: 100%;
-  gap: 16px;
+  gap: 10px;
 }
 
-.welcome-step {
+.phone-setup-country-code {
   display: flex;
   align-items: center;
-  gap: 14px;
-}
-
-.welcome-step-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
   flex-shrink: 0;
-  border-radius: 50%;
-  background-color: #eff6ff;
+  border-radius: 12px;
+  padding: 14px 16px;
+  gap: 6px;
+  background-color: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  cursor: pointer;
 }
 
-.welcome-step-text {
+.phone-setup-flag {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 18px;
+}
+
+.phone-setup-code {
   font-family: 'Geist', system-ui, sans-serif;
   font-size: 15px;
   font-weight: 500;
@@ -132,21 +130,47 @@
   line-height: 18px;
 }
 
+.phone-setup-number {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  border-radius: 12px;
+  padding: 14px 18px;
+  background-color: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #1a1f36;
+  line-height: 18px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.phone-setup-number::placeholder {
+  color: #94a3b8;
+}
+
+.phone-setup-number:focus {
+  border-color: #3b82f6;
+}
+
 /* CTA */
-.welcome-cta {
+.phone-setup-cta {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
-  gap: 16px;
+  gap: 14px;
 }
 
-.welcome-button {
+.phone-setup-button {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
   border-radius: 50px;
-  padding: 16px 48px;
+  padding: 16px;
   background: linear-gradient(180deg, #4d8ef8 0%, #3566d4 50%, #2a51b8 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
@@ -166,103 +190,36 @@
     box-shadow 0.2s;
 }
 
-.welcome-button:hover {
+.phone-setup-button:hover {
   transform: translateY(-1px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
     0 12px 28px -4px rgba(59, 130, 246, 0.35),
     0 4px 8px rgba(59, 130, 246, 0.2);
-  text-decoration: none;
 }
 
-.welcome-cta-hint {
+.phone-setup-cta-hint {
   font-family: 'Geist', system-ui, sans-serif;
   font-size: 13px;
   font-weight: 400;
   color: #94a3b8;
   line-height: 16px;
+  text-align: center;
 }
 
 /* Decorative elements */
-.welcome-shark-ghost {
+.phone-setup-shark-ghost {
   position: absolute;
-  bottom: 70px;
-  left: 80px;
-  opacity: 0.05;
+  bottom: 55px;
+  left: 65px;
+  opacity: 0.04;
   pointer-events: none;
 }
 
-.welcome-whale-ghost {
+.phone-setup-whale-ghost {
   position: absolute;
-  bottom: 60px;
-  right: 80px;
-  opacity: 0.07;
+  bottom: 45px;
+  right: 65px;
+  opacity: 0.06;
   pointer-events: none;
-}
-
-.welcome-wave {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  opacity: 0.12;
-  pointer-events: none;
-}
-
-.welcome-ocean-gradient {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 120px;
-  background: linear-gradient(
-    180deg,
-    rgba(219, 234, 254, 0) 0%,
-    rgba(219, 234, 254, 0.08) 60%,
-    rgba(191, 219, 254, 0.06) 100%
-  );
-  pointer-events: none;
-}
-
-/* Mobile */
-@media (max-width: 640px) {
-  .welcome-nav {
-    padding: 16px 24px;
-  }
-
-  .welcome-nav-logo,
-  .welcome-nav-logo:hover {
-    font-size: 18px;
-  }
-
-  .welcome-progress-track {
-    top: 54px;
-  }
-
-  .welcome-content {
-    padding: 0 28px;
-  }
-
-  .welcome-card {
-    max-width: 100%;
-  }
-
-  .welcome-title {
-    font-size: 28px;
-  }
-
-  .welcome-subtitle {
-    font-size: 15px;
-  }
-
-  .welcome-button {
-    width: 100%;
-  }
-
-  .welcome-shark-ghost,
-  .welcome-whale-ghost,
-  .welcome-wave,
-  .welcome-ocean-gradient {
-    display: none;
-  }
 }
