@@ -27,6 +27,85 @@ function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function buildApprovalLead(summary: ReturnType<typeof summarizeApprovalRequest>): string {
+  const target = summary.target ?? 'this project';
+
+  switch (summary.category) {
+    case 'build':
+      return `Claude wants to build the ${target} project.`;
+    case 'test':
+      return `Claude wants to run tests for the ${target} project.`;
+    case 'dependencies':
+      return `Claude wants to update dependencies for the ${target} project.`;
+    case 'delete':
+      return `Claude wants to delete files in ${target}.`;
+    case 'push':
+      return `Claude wants to push commits from ${target}.`;
+    case 'env_change':
+      return `Claude wants to change environment configuration for ${target}.`;
+    case 'deploy':
+      return `Claude wants to deploy changes from ${target}.`;
+    case 'migration':
+      return `Claude wants to run a database migration for ${target}.`;
+    case 'edit':
+      return `Claude wants to modify files in ${target}.`;
+    case 'inspect':
+      return `Claude wants to inspect ${target}.`;
+    case 'unknown':
+    default:
+      return 'Claude wants approval to continue with a project action.';
+  }
+}
+
+function buildCompactApprovalLines(summary: ReturnType<typeof summarizeApprovalRequest>): string[] {
+  const lines = [`• BRB will run: ${summary.exactAction}`];
+
+  if (summary.target) {
+    lines.push(`• Target: ${summary.target}`);
+  }
+
+  switch (summary.category) {
+    case 'build':
+      lines.push('• This is a compile check only');
+      lines.push('• It will not deploy anything');
+      break;
+    case 'test':
+      lines.push('• This only runs the test suite');
+      lines.push('• It will not publish or deploy anything');
+      break;
+    case 'dependencies':
+      lines.push('• This will update packages and the lockfile');
+      break;
+    case 'delete':
+      lines.push('• This permanently removes the targeted files');
+      break;
+    case 'push':
+      lines.push('• This publishes commits to the remote repository');
+      break;
+    case 'env_change':
+      lines.push('• This changes environment or secret configuration');
+      break;
+    case 'deploy':
+      lines.push('• This could affect a live environment');
+      break;
+    case 'migration':
+      lines.push('• This changes database schema or data');
+      break;
+    case 'edit':
+      lines.push('• This applies file changes in the working tree');
+      break;
+    case 'inspect':
+      lines.push('• This is read-only and should not change files');
+      break;
+    case 'unknown':
+    default:
+      lines.push('• This executes the requested action');
+      break;
+  }
+
+  return lines;
+}
+
 function formatFilePreview(files?: string[]): string | null {
   if (!files || files.length === 0) {
     return null;
@@ -41,35 +120,33 @@ export function formatTelegramApprovalMessage(
   otherPendingCount = 0,
 ): string {
   const summary = summarizeApprovalRequest({ approvalRequest, otherPendingCount });
-  const lines = ['🤖 BRB — Approval Needed', '', summary.intent];
-
-  if (summary.shortContext && summary.shortContext !== summary.reason) {
-    lines.push('', `Context: ${summary.shortContext}`);
-  }
+  const lines = ['🤖 BRB — Approval Needed', '', buildApprovalLead(summary)];
 
   lines.push(
     '',
-    `Why: ${summary.reason ?? 'BRB could not infer the reason confidently.'}`,
-    `If approved: ${summary.effect ?? 'The requested action will be executed.'}`,
-    `Risk: ${capitalize(summary.riskLevel)} — ${summary.riskReason ?? 'Review details if unsure'}`,
-    `Action: ${summary.exactAction}`,
+    'Why this is coming up:',
+    summary.shortContext && summary.shortContext !== summary.reason
+      ? summary.shortContext
+      : summary.reason ?? 'BRB could not infer the reason confidently.',
   );
 
-  if (summary.target) {
-    lines.push(`Target: ${summary.target}`);
-  }
-
-  if (summary.pendingCount) {
-    lines.push('', `Pending: ${summary.pendingCount} other approvals pending — reply "list"`);
-  }
+  lines.push('', 'If you approve:', ...buildCompactApprovalLines(summary));
 
   lines.push(
     '',
-    'Reply:',
-    'yes = approve',
-    'no = deny',
-    'why = more context',
-    'details = raw technical details',
+    `Risk: ${capitalize(summary.riskLevel)} — ${summary.riskReason ?? 'Review details if unsure'}`,
+    'Reply: yes / no / why / details',
+  );
+
+  if (summary.pendingCount) {
+    lines.push(
+      summary.pendingCount === 1
+        ? 'There is 1 other approval waiting. Reply "list"'
+        : `There are ${summary.pendingCount} other approvals waiting. Reply "list"`,
+    );
+  }
+
+  lines.push(
     `ID: ${summary.approvalId}`,
   );
 

@@ -16,6 +16,7 @@ export type ApprovalActionCategory =
   | 'unknown';
 
 export interface ApprovalSummary {
+  category: ApprovalActionCategory;
   title: string;
   intent: string;
   reason?: string;
@@ -519,6 +520,7 @@ export function summarizeApprovalRequest({
   });
 
   return {
+    category: details.category,
     title: narrative.title,
     intent: narrative.intent,
     reason: truncate(narrative.reason, 220),
