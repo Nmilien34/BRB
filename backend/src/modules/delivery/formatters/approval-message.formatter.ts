@@ -32,28 +32,28 @@ function buildApprovalLead(summary: ReturnType<typeof summarizeApprovalRequest>)
 
   switch (summary.category) {
     case 'build':
-      return `Claude wants to build the ${target} project.`;
+      return `Claude is asking to run a build check for ${target}.`;
     case 'test':
-      return `Claude wants to run tests for the ${target} project.`;
+      return `Claude is asking to run tests for ${target}.`;
     case 'dependencies':
-      return `Claude wants to update dependencies for the ${target} project.`;
+      return `Claude is asking to update dependencies for ${target}.`;
     case 'delete':
-      return `Claude wants to delete files in ${target}.`;
+      return `Claude is asking to delete files in ${target}.`;
     case 'push':
-      return `Claude wants to push commits from ${target}.`;
+      return `Claude is asking to push commits from ${target}.`;
     case 'env_change':
-      return `Claude wants to change environment configuration for ${target}.`;
+      return `Claude is asking to change environment configuration for ${target}.`;
     case 'deploy':
-      return `Claude wants to deploy changes from ${target}.`;
+      return `Claude is asking to deploy changes from ${target}.`;
     case 'migration':
-      return `Claude wants to run a database migration for ${target}.`;
+      return `Claude is asking to run a database migration for ${target}.`;
     case 'edit':
-      return `Claude wants to modify files in ${target}.`;
+      return `Claude is asking to modify files in ${target}.`;
     case 'inspect':
-      return `Claude wants to inspect ${target}.`;
+      return `Claude is asking to inspect ${target}.`;
     case 'unknown':
     default:
-      return 'Claude wants approval to continue with a project action.';
+      return 'Claude is asking for approval to continue with a project action.';
   }
 }
 
@@ -125,21 +125,41 @@ export function formatTelegramApprovalMessage(
   lines.push(
     '',
     'Why this is coming up:',
-    summary.shortContext && summary.shortContext !== summary.reason
-      ? summary.shortContext
-      : summary.reason ?? 'BRB could not infer the reason confidently.',
+    `• ${
+      summary.shortContext && summary.shortContext !== summary.reason
+        ? summary.shortContext
+        : summary.reason ?? 'BRB could not infer the reason confidently.'
+    }`,
   );
+
+  lines.push(
+    '',
+    'What Claude is asking to do:',
+    `• Run: ${summary.exactAction}`,
+  );
+
+  if (summary.target) {
+    lines.push(`• Project: ${summary.target}`);
+  }
 
   lines.push('', 'If you approve:', ...buildCompactApprovalLines(summary));
 
   lines.push(
     '',
-    `Risk: ${capitalize(summary.riskLevel)} — ${summary.riskReason ?? 'Review details if unsure'}`,
-    'Reply: yes / no / why / details',
+    'Risk:',
+    `• ${capitalize(summary.riskLevel)} — ${summary.riskReason ?? 'Review details if unsure'}`,
+    '',
+    'Reply with:',
+    '• yes — approve',
+    '• no — deny',
+    '• why — more context',
+    '• details — raw technical details',
+    '• anything else — send instructions to Claude',
   );
 
   if (summary.pendingCount) {
     lines.push(
+      '',
       summary.pendingCount === 1
         ? 'There is 1 other approval waiting. Reply "list"'
         : `There are ${summary.pendingCount} other approvals waiting. Reply "list"`,
@@ -169,17 +189,24 @@ export function formatTelegramApprovalWhyMessage(
 
   lines.push(
     '',
-    `Why: ${summary.reason ?? 'BRB could not infer the reason confidently.'}`,
-    `If approved: ${summary.effect ?? 'The requested action will be executed.'}`,
-    `Risk: ${capitalize(summary.riskLevel)} — ${summary.riskReason ?? 'Review details if unsure'}`,
-    `Action: ${summary.exactAction}`,
+    'Why:',
+    `• ${summary.reason ?? 'BRB could not infer the reason confidently.'}`,
+    '',
+    'If you approve:',
+    `• ${summary.effect ?? 'The requested action will be executed.'}`,
+    '',
+    'Risk:',
+    `• ${capitalize(summary.riskLevel)} — ${summary.riskReason ?? 'Review details if unsure'}`,
+    '',
+    'Action:',
+    `• ${summary.exactAction}`,
   );
 
   if (summary.target) {
-    lines.push(`Target: ${summary.target}`);
+    lines.push(`• Target: ${summary.target}`);
   }
 
-  lines.push('', 'Reply: yes / no / details / instructions', `ID: ${summary.approvalId}`);
+  lines.push('', 'Reply with: yes / no / details / instructions', `ID: ${summary.approvalId}`);
 
   return lines.join('\n');
 }
@@ -195,34 +222,34 @@ export function formatTelegramApprovalDetailsMessage(
   ];
 
   if (summary.raw?.command) {
-    lines.push(`Command: ${summary.raw.command}`);
+    lines.push(`• Command: ${summary.raw.command}`);
   } else {
-    lines.push(`Action: ${summary.exactAction}`);
+    lines.push(`• Action: ${summary.exactAction}`);
   }
 
   if (summary.raw?.tool) {
-    lines.push(`Tool: ${summary.raw.tool}`);
+    lines.push(`• Tool: ${summary.raw.tool}`);
   }
 
   if (summary.target) {
-    lines.push(`Target: ${summary.target}`);
+    lines.push(`• Target: ${summary.target}`);
   }
 
   if (summary.raw?.cwd) {
-    lines.push(`Directory: ${summary.raw.cwd}`);
+    lines.push(`• Directory: ${summary.raw.cwd}`);
   }
 
   const filePreview = formatFilePreview(summary.raw?.files);
 
   if (filePreview) {
-    lines.push(`Files: ${filePreview}`);
+    lines.push(`• Files: ${filePreview}`);
   }
 
   if (summary.shortContext) {
-    lines.push(`Context: ${summary.shortContext}`);
+    lines.push(`• Context: ${summary.shortContext}`);
   }
 
-  lines.push('', 'Reply: yes / no / why / instructions', `ID: ${summary.approvalId}`);
+  lines.push('', 'Reply with: yes / no / why / instructions', `ID: ${summary.approvalId}`);
 
   return lines.join('\n');
 }
