@@ -113,6 +113,24 @@ function humanJoin(values: string[]): string {
   return `${values.slice(0, -1).join(', ')}, and ${values[values.length - 1]}`;
 }
 
+function ensureSentence(value: string): string {
+  const trimmed = value.trim();
+
+  if (/[.!?]$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `${trimmed}.`;
+}
+
+function stripLeadingClaudePrefix(value: string): string {
+  return value.replace(/^claude\s+(is|was)\s+/i, '').trim();
+}
+
+function stripTrailingPunctuation(value: string): string {
+  return value.replace(/[.!?]+$/, '').trim();
+}
+
 function describeProjectTarget(target?: string): string {
   return target ? `the ${target} project` : 'the current project';
 }
@@ -215,6 +233,63 @@ function inferShortContext(
   }
 
   return undefined;
+}
+
+function buildConstructiveWhy(details: {
+  category: ApprovalActionCategory;
+  shortContext?: string;
+  reasonHint?: string;
+}): string | undefined {
+  const context = details.shortContext ? stripLeadingClaudePrefix(details.shortContext) : undefined;
+
+  const categoryReason = (() => {
+    switch (details.category) {
+      case 'build':
+        return 'It wants to run a build check before continuing so it can catch compile issues now instead of later.';
+      case 'test':
+        return 'It wants to run tests before continuing so it can catch behavior issues early.';
+      case 'dependencies':
+        return 'It appears to need a dependency change before it can continue with the work in progress.';
+      case 'delete':
+        return 'It appears to believe some files should be removed to complete or clean up the current task.';
+      case 'push':
+        return 'It appears to think the current work is ready to be pushed to the remote repository.';
+      case 'env_change':
+        return 'It appears to need a configuration change before it can continue safely.';
+      case 'deploy':
+        return 'It appears to think the current work is ready to be deployed or published.';
+      case 'migration':
+        return 'It appears to need a database change before the current work can continue correctly.';
+      case 'edit':
+        return 'It appears to need to update project files to continue the task it is working on.';
+      case 'inspect':
+        return 'It wants to inspect project state before taking the next step.';
+      case 'unknown':
+      default:
+        return 'It needs approval before it can continue with the requested action.';
+    }
+  })();
+
+  const lines: string[] = [];
+
+  if (context) {
+    lines.push(`Claude has been working on ${stripTrailingPunctuation(context)}.`);
+  }
+
+  lines.push(categoryReason);
+
+  const reasonHint = details.reasonHint ? ensureSentence(details.reasonHint) : undefined;
+
+  if (
+    reasonHint &&
+    !/^it likely\b/i.test(reasonHint) &&
+    !/^it appears\b/i.test(reasonHint) &&
+    !/^claude\b/i.test(reasonHint)
+  ) {
+    lines.push(reasonHint);
+  }
+
+  return lines.join(' ');
 }
 
 function isBuildCommand(command: string): boolean {
@@ -353,6 +428,7 @@ export function buildApprovalNarrative(details: {
   category: ApprovalActionCategory;
   target?: string;
   reasonHint?: string;
+  shortContext?: string;
   files?: string[];
 }): ApprovalNarrative {
   const filePreview = (details.files ?? []).length > 0
@@ -367,8 +443,12 @@ export function buildApprovalNarrative(details: {
         title: 'Build Project',
         intent: `Claude wants to build ${projectTarget}.`,
         reason:
-          details.reasonHint ??
-          'It likely just made code changes and wants to verify the project still compiles.',
+          buildConstructiveWhy({
+            category: details.category,
+            shortContext: details.shortContext,
+            reasonHint: details.reasonHint,
+          }) ??
+          'Claude has been working on recent changes and wants to verify the project still compiles before continuing.',
         effect:
           `BRB will run the build command ${targetLocation}. This checks for compile errors and will not deploy production by itself.`,
       };
@@ -377,8 +457,12 @@ export function buildApprovalNarrative(details: {
         title: 'Run Tests',
         intent: `Claude wants to run the test suite for ${projectTarget}.`,
         reason:
-          details.reasonHint ??
-          'It likely changed code and wants to verify behavior before continuing.',
+          buildConstructiveWhy({
+            category: details.category,
+            shortContext: details.shortContext,
+            reasonHint: details.reasonHint,
+          }) ??
+          'Claude has been working on recent changes and wants to verify behavior before continuing.',
         effect:
           `BRB will run the project tests ${targetLocation}. This verifies behavior without publishing anything.`,
       };
@@ -387,8 +471,12 @@ export function buildApprovalNarrative(details: {
         title: 'Update Dependencies',
         intent: `Claude wants to install or update dependencies for ${projectTarget}.`,
         reason:
-          details.reasonHint ??
-          'It appears to need a package required for the feature or fix it is working on.',
+          buildConstructiveWhy({
+            category: details.category,
+            shortContext: details.shortContext,
+            reasonHint: details.reasonHint,
+          }) ??
+          'Claude has been working on a change that appears to require a dependency update before it can continue.',
         effect:
           `BRB will update project dependencies ${targetLocation}. This may change the lockfile and installed packages.`,
       };
@@ -397,8 +485,12 @@ export function buildApprovalNarrative(details: {
         title: 'Delete Files',
         intent: `Claude wants to delete files ${targetLocation}.`,
         reason:
-          details.reasonHint ??
-          'It appears to be cleaning up generated, temporary, or obsolete files.',
+          buildConstructiveWhy({
+            category: details.category,
+            shortContext: details.shortContext,
+            reasonHint: details.reasonHint,
+          }) ??
+          'Claude appears to be cleaning up files as part of the current task.',
         effect:
           'BRB will permanently remove the targeted files unless they are restored from git or a backup.',
       };
@@ -407,8 +499,12 @@ export function buildApprovalNarrative(details: {
         title: 'Push Commits',
         intent: `Claude wants to push commits from ${projectTarget} to the remote repository.`,
         reason:
-          details.reasonHint ??
-          'It appears to believe the current changes are ready to be shared remotely.',
+          buildConstructiveWhy({
+            category: details.category,
+            shortContext: details.shortContext,
+            reasonHint: details.reasonHint,
+          }) ??
+          'Claude appears to think the current changes are ready to be shared remotely.',
         effect:
           'BRB will send local commits to the configured git remote, making them visible outside this machine.',
       };
@@ -417,8 +513,12 @@ export function buildApprovalNarrative(details: {
         title: 'Change Environment Config',
         intent: `Claude wants to change environment configuration for ${projectTarget}.`,
         reason:
-          details.reasonHint ??
-          'It appears to be updating configuration or secret-related settings needed for the task.',
+          buildConstructiveWhy({
+            category: details.category,
+            shortContext: details.shortContext,
+            reasonHint: details.reasonHint,
+          }) ??
+          'Claude appears to need a configuration change before it can continue safely.',
         effect:
           'BRB will modify environment configuration, which can affect local behavior, deployments, or secrets handling.',
       };
@@ -427,8 +527,12 @@ export function buildApprovalNarrative(details: {
         title: 'Deploy Changes',
         intent: `Claude wants to deploy or publish changes from ${projectTarget}.`,
         reason:
-          details.reasonHint ??
-          'It appears to be trying to make the latest changes live or available to others.',
+          buildConstructiveWhy({
+            category: details.category,
+            shortContext: details.shortContext,
+            reasonHint: details.reasonHint,
+          }) ??
+          'Claude appears to think the current work is ready to be deployed or published.',
         effect:
           'BRB will run a deployment or publish command that could affect a live or shared environment.',
       };
@@ -437,8 +541,12 @@ export function buildApprovalNarrative(details: {
         title: 'Run Database Migration',
         intent: `Claude wants to run a database migration for ${projectTarget}.`,
         reason:
-          details.reasonHint ??
-          'It appears to be updating schema or data shape for the current work.',
+          buildConstructiveWhy({
+            category: details.category,
+            shortContext: details.shortContext,
+            reasonHint: details.reasonHint,
+          }) ??
+          'Claude appears to need a database change before the current work can continue correctly.',
         effect:
           'BRB will modify database structure or data, which can have broader impact than a local code change.',
       };
@@ -447,10 +555,14 @@ export function buildApprovalNarrative(details: {
         title: 'Modify Files',
         intent: `Claude wants to modify files in ${projectTarget}.`,
         reason:
-          details.reasonHint ??
+          buildConstructiveWhy({
+            category: details.category,
+            shortContext: details.shortContext,
+            reasonHint: details.reasonHint,
+          }) ??
           (filePreview
-            ? `It appears to be updating ${filePreview} for the current task.`
-            : 'It appears to be implementing or adjusting code for the current task.'),
+            ? `Claude has been working on the current task and appears to need to update ${filePreview} before it can continue.`
+            : 'Claude has been working on the current task and appears to need to update project files before it can continue.'),
         effect:
           'BRB will apply file changes in the working tree. Review details if the affected files are sensitive.',
       };
@@ -459,8 +571,12 @@ export function buildApprovalNarrative(details: {
         title: 'Inspect Project',
         intent: `Claude wants to inspect the current state of ${projectTarget}.`,
         reason:
-          details.reasonHint ??
-          'It appears to be reading files or checking project state before taking the next step.',
+          buildConstructiveWhy({
+            category: details.category,
+            shortContext: details.shortContext,
+            reasonHint: details.reasonHint,
+          }) ??
+          'Claude wants to check project state before taking the next step.',
         effect:
           'BRB will run a read-only inspection step. This should not modify your project.',
       };
@@ -470,8 +586,12 @@ export function buildApprovalNarrative(details: {
         title: 'Approval Needed',
         intent: 'Claude wants permission to run a development action in your project.',
         reason:
-          details.reasonHint ??
-          'BRB could not fully infer the reason from the raw request.',
+          buildConstructiveWhy({
+            category: details.category,
+            shortContext: details.shortContext,
+            reasonHint: details.reasonHint,
+          }) ??
+          'Claude needs approval before it can continue with the requested action.',
         effect: 'The requested action will be executed.',
       };
   }
@@ -516,6 +636,7 @@ export function summarizeApprovalRequest({
     category: details.category,
     target: details.target,
     reasonHint: details.reasonHint,
+    shortContext: details.shortContext,
     files: details.files,
   });
 

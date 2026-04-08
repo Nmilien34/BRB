@@ -112,6 +112,7 @@ function buildApprovalCandidate(
   }
 
   const reason = firstString(payload, ['reason', 'description', 'message', 'prompt', 'permissionPrompt']);
+  const taskContext = firstString(payload, ['taskContext', 'task_context', 'task', 'context']);
   const toolInput =
     getRecordValue(payload, 'toolInput') ??
     getRecordValue(payload, 'tool_input') ??
@@ -126,6 +127,7 @@ function buildApprovalCandidate(
     cwd,
     transcriptPath,
     projectPath,
+    taskContext,
     reason,
     toolInput,
   });
