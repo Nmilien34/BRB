@@ -17,8 +17,10 @@ import {
 } from '../approval-requests/approval-request.service.js';
 import {
   formatTelegramApprovalConfirmation,
+  formatTelegramApprovalDetailsMessage,
   formatTelegramPendingApprovalList,
   formatTelegramSelectedApprovalPrompt,
+  formatTelegramApprovalWhyMessage,
 } from '../delivery/formatters/approval-message.formatter.js';
 
 const TELEGRAM_CHANNEL_TYPE = 'telegram';
@@ -48,8 +50,9 @@ interface TelegramApprovalReply {
 
 type TelegramApprovalCommand =
   | { type: 'list' }
-  | { type: 'select'; index: number; replyText?: string }
-  | { type: 'reply'; replyText: string };
+  | { type: 'select'; index: number }
+  | { type: 'inspect'; subject: 'current' | 'index'; index?: number; detail: 'why' | 'details' }
+  | { type: 'resolve'; subject: 'current' | 'index'; index?: number; replyText: string };
 
 function getTelegramMetadata(connection: ChannelConnectionDocument): TelegramConnectionMetadata {
   if (!connection.metadata || typeof connection.metadata !== 'object') {
@@ -140,20 +143,44 @@ function parseApprovalCommand(text: string): TelegramApprovalCommand {
     return { type: 'list' };
   }
 
+  if (normalized === 'why' || normalized === 'details') {
+    return {
+      type: 'inspect',
+      subject: 'current',
+      detail: normalized,
+    };
+  }
+
   const numberedReplyMatch = trimmed.match(/^(\d+)(?:\s+(.+))?$/s);
 
   if (numberedReplyMatch) {
     const index = Number.parseInt(numberedReplyMatch[1] ?? '', 10);
     const replyText = numberedReplyMatch[2]?.trim();
 
+    if (!replyText) {
+      return { type: 'select', index };
+    }
+
+    const normalizedReply = replyText.toLowerCase();
+
+    if (normalizedReply === 'why' || normalizedReply === 'details') {
+      return {
+        type: 'inspect',
+        subject: 'index',
+        index,
+        detail: normalizedReply,
+      };
+    }
+
     return {
-      type: 'select',
+      type: 'resolve',
+      subject: 'index',
       index,
-      replyText: replyText && replyText.length > 0 ? replyText : undefined,
+      replyText,
     };
   }
 
-  return { type: 'reply', replyText: trimmed };
+  return { type: 'resolve', subject: 'current', replyText: trimmed };
 }
 
 async function findTelegramConnectionForUser(user: UserDocument): Promise<ChannelConnectionDocument | null> {
@@ -436,19 +463,21 @@ async function handleApprovalReply(update: TelegramWebhookUpdate): Promise<void>
     return;
   }
 
+  const connectedChannel = channelConnection;
+
   const command = parseApprovalCommand(text);
 
   if (command.type === 'list') {
     logger.info(
-      { updateId: update.update_id, userId: String(channelConnection.userId), chatId },
+      { updateId: update.update_id, userId: String(connectedChannel.userId), chatId },
       'Telegram approval list command received',
     );
 
-    const openApprovals = await listOpenApprovalRequestsForUser(channelConnection.userId);
+    const openApprovals = await listOpenApprovalRequestsForUser(connectedChannel.userId);
 
     if (openApprovals.length === 0) {
       logger.info(
-        { updateId: update.update_id, userId: String(channelConnection.userId), chatId },
+        { updateId: update.update_id, userId: String(connectedChannel.userId), chatId },
         'Unknown Telegram message received because there are no pending approvals',
       );
       await sendTelegramMessageBestEffort(
@@ -462,10 +491,32 @@ async function handleApprovalReply(update: TelegramWebhookUpdate): Promise<void>
     return;
   }
 
-  let approvalRequest = null;
+  async function getDefaultOpenApproval() {
+    const selectedApprovalRequest = await getSelectedOpenApprovalRequest(connectedChannel);
 
-  if (command.type === 'select') {
-    const selection = await getOpenApprovalRequestForUserByIndex(channelConnection.userId, command.index);
+    if (selectedApprovalRequest) {
+      return selectedApprovalRequest;
+    }
+
+    const openApprovals = await listOpenApprovalRequestsForUser(connectedChannel.userId);
+    return openApprovals[0] ?? null;
+  }
+
+  let approvalRequest = null;
+  let selectionIndex: number | null = null;
+
+  const indexedCommand =
+    command.type === 'select'
+      ? { index: command.index, selectionOnly: true }
+      : (command.type === 'inspect' || command.type === 'resolve') &&
+          command.subject === 'index' &&
+          typeof command.index === 'number'
+        ? { index: command.index, selectionOnly: false }
+        : null;
+
+  if (indexedCommand) {
+    const index = indexedCommand.index;
+    const selection = await getOpenApprovalRequestForUserByIndex(connectedChannel.userId, index);
 
     if (!selection) {
       await sendTelegramMessageBestEffort(
@@ -475,28 +526,24 @@ async function handleApprovalReply(update: TelegramWebhookUpdate): Promise<void>
       return;
     }
 
-    if (!command.replyText) {
-      await setSelectedApprovalRequest(channelConnection, selection.approvalRequest.id);
+    approvalRequest = selection.approvalRequest;
+    selectionIndex = selection.index;
+
+    if (indexedCommand.selectionOnly) {
+      await setSelectedApprovalRequest(connectedChannel, selection.approvalRequest.id);
       await sendTelegramMessageBestEffort(
         chatId,
         formatTelegramSelectedApprovalPrompt(selection.approvalRequest, selection.index),
       );
       return;
     }
-
-    approvalRequest = selection.approvalRequest;
   } else {
-    approvalRequest = await getSelectedOpenApprovalRequest(channelConnection);
-
-    if (!approvalRequest) {
-      const openApprovals = await listOpenApprovalRequestsForUser(channelConnection.userId);
-      approvalRequest = openApprovals[0] ?? null;
-    }
+    approvalRequest = await getDefaultOpenApproval();
   }
 
   if (!approvalRequest) {
     logger.info(
-      { updateId: update.update_id, userId: String(channelConnection.userId), chatId },
+      { updateId: update.update_id, userId: String(connectedChannel.userId), chatId },
       'Unknown Telegram message received because there are no pending approvals',
     );
     await sendTelegramMessageBestEffort(
@@ -506,14 +553,29 @@ async function handleApprovalReply(update: TelegramWebhookUpdate): Promise<void>
     return;
   }
 
-  const reply = parseApprovalReply(command.type === 'select' ? command.replyText ?? '' : command.replyText);
+  if (command.type === 'inspect') {
+    await setSelectedApprovalRequest(connectedChannel, approvalRequest.id);
+    const detailMessage = command.detail === 'why'
+      ? formatTelegramApprovalWhyMessage(approvalRequest)
+      : formatTelegramApprovalDetailsMessage(approvalRequest);
+
+    await sendTelegramMessageBestEffort(chatId, detailMessage);
+    return;
+  }
+
+  if (command.type !== 'resolve') {
+    return;
+  }
+
+  const reply = parseApprovalReply(command.replyText);
 
   logger.info(
     {
       approvalRequestId: approvalRequest.id,
-      userId: String(channelConnection.userId),
+      userId: String(connectedChannel.userId),
       chatId,
       replyStatus: reply.status,
+      selectedIndex: selectionIndex,
     },
     'Approval reply received',
   );
@@ -524,10 +586,10 @@ async function handleApprovalReply(update: TelegramWebhookUpdate): Promise<void>
     resolutionNote: reply.resolutionNote,
   });
 
-  const metadata = getTelegramMetadata(channelConnection);
+  const metadata = getTelegramMetadata(connectedChannel);
 
   if (metadata.selectedApprovalRequestId === resolvedApproval.id) {
-    await clearSelectedApprovalRequest(channelConnection);
+    await clearSelectedApprovalRequest(connectedChannel);
   }
 
   await sendTelegramMessageBestEffort(

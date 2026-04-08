@@ -1,51 +1,5 @@
 import type { ApprovalRequestDocument } from '../../approval-requests/approval-request.model.js';
-
-function getShortApprovalId(approvalId: string): string {
-  return approvalId.slice(-6);
-}
-
-function truncate(value: string, maxLength: number): string {
-  if (value.length <= maxLength) {
-    return value;
-  }
-
-  return `${value.slice(0, maxLength - 1)}…`;
-}
-
-function stringifyToolInput(toolInput: unknown): string | null {
-  if (typeof toolInput === 'string' && toolInput.trim().length > 0) {
-    return truncate(toolInput.trim(), 280);
-  }
-
-  if (!toolInput || typeof toolInput !== 'object') {
-    return null;
-  }
-
-  const record = toolInput as Record<string, unknown>;
-  const commandFields = ['command', 'cmd', 'shellCommand', 'shell_command'];
-
-  for (const field of commandFields) {
-    const value = record[field];
-
-    if (typeof value === 'string' && value.trim().length > 0) {
-      return truncate(value.trim(), 280);
-    }
-  }
-
-  try {
-    return truncate(JSON.stringify(toolInput), 280);
-  } catch {
-    return null;
-  }
-}
-
-function getRawContext(approvalRequest: ApprovalRequestDocument): Record<string, unknown> {
-  if (!approvalRequest.rawContext || typeof approvalRequest.rawContext !== 'object') {
-    return {};
-  }
-
-  return approvalRequest.rawContext as Record<string, unknown>;
-}
+import { summarizeApprovalRequest } from '../approvals/summarize-approval.js';
 
 function formatTimeAgo(date: Date): string {
   const diffMs = Math.max(0, Date.now() - date.getTime());
@@ -69,64 +23,129 @@ function formatTimeAgo(date: Date): string {
   return `${diffDays}d ago`;
 }
 
-function getToolName(rawContext: Record<string, unknown>): string {
-  return (typeof rawContext.toolName === 'string' && rawContext.toolName.trim()) || 'Unknown tool';
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function getSessionLabel(approvalRequest: ApprovalRequestDocument, rawContext: Record<string, unknown>): string {
-  if (approvalRequest.sessionLabel?.trim()) {
-    return approvalRequest.sessionLabel.trim();
+function formatFilePreview(files?: string[]): string | null {
+  if (!files || files.length === 0) {
+    return null;
   }
 
-  if (typeof rawContext.sessionLabel === 'string' && rawContext.sessionLabel.trim()) {
-    return rawContext.sessionLabel.trim();
-  }
-
-  return 'Claude session';
+  const preview = files.slice(0, 3).join(', ');
+  return files.length > 3 ? `${preview}, +${files.length - 3} more` : preview;
 }
 
 export function formatTelegramApprovalMessage(
   approvalRequest: ApprovalRequestDocument,
   otherPendingCount = 0,
 ): string {
-  const rawContext = getRawContext(approvalRequest);
-  const toolName = getToolName(rawContext);
-  const sessionLabel = getSessionLabel(approvalRequest, rawContext);
-  const command = stringifyToolInput(rawContext.toolInput);
-  const cwd =
-    (typeof rawContext.cwd === 'string' && rawContext.cwd.trim()) ||
-    (typeof rawContext.projectPath === 'string' && rawContext.projectPath.trim()) ||
-    null;
-  const toolInputSummary = command ??
-    (typeof rawContext.reason === 'string' && rawContext.reason.trim()
-      ? truncate(rawContext.reason.trim(), 280)
-      : truncate(approvalRequest.summary, 280));
+  const summary = summarizeApprovalRequest({ approvalRequest, otherPendingCount });
+  const lines = ['🤖 BRB — Approval Needed', '', summary.intent];
 
-  const lines = [
-    '🤖 BRB — Approval Request',
-    '',
-    `📁 ${sessionLabel}`,
-    `🛠 Tool: ${toolName}`,
-    `⚡ ${toolInputSummary}`,
-  ];
-
-  if (cwd) {
-    lines.push(`📂 ${cwd}`);
+  if (summary.shortContext && summary.shortContext !== summary.reason) {
+    lines.push('', `Context: ${summary.shortContext}`);
   }
 
-  if (otherPendingCount > 0) {
-    lines.push('', `⚠️ ${otherPendingCount} other approvals pending — reply "list" to see all`);
+  lines.push(
+    '',
+    `Why: ${summary.reason ?? 'BRB could not infer the reason confidently.'}`,
+    `If approved: ${summary.effect ?? 'The requested action will be executed.'}`,
+    `Risk: ${capitalize(summary.riskLevel)} — ${summary.riskReason ?? 'Review details if unsure'}`,
+    `Action: ${summary.exactAction}`,
+  );
+
+  if (summary.target) {
+    lines.push(`Target: ${summary.target}`);
+  }
+
+  if (summary.pendingCount) {
+    lines.push('', `Pending: ${summary.pendingCount} other approvals pending — reply "list"`);
   }
 
   lines.push(
     '',
     'Reply:',
-    '✅ yes — approve',
-    '❌ no — deny',
-    '💬 anything else — send as instruction',
-    '',
-    `ID: ${getShortApprovalId(approvalRequest.id)}`,
+    'yes = approve',
+    'no = deny',
+    'why = more context',
+    'details = raw technical details',
+    `ID: ${summary.approvalId}`,
   );
+
+  return lines.join('\n');
+}
+
+export function formatTelegramApprovalWhyMessage(
+  approvalRequest: ApprovalRequestDocument,
+): string {
+  const summary = summarizeApprovalRequest({ approvalRequest });
+  const lines = [
+    '🤖 BRB — Why This Needs Approval',
+    '',
+    summary.intent,
+  ];
+
+  if (summary.shortContext) {
+    lines.push('', `Context: ${summary.shortContext}`);
+  }
+
+  lines.push(
+    '',
+    `Why: ${summary.reason ?? 'BRB could not infer the reason confidently.'}`,
+    `If approved: ${summary.effect ?? 'The requested action will be executed.'}`,
+    `Risk: ${capitalize(summary.riskLevel)} — ${summary.riskReason ?? 'Review details if unsure'}`,
+    `Action: ${summary.exactAction}`,
+  );
+
+  if (summary.target) {
+    lines.push(`Target: ${summary.target}`);
+  }
+
+  lines.push('', 'Reply: yes / no / details / instructions', `ID: ${summary.approvalId}`);
+
+  return lines.join('\n');
+}
+
+export function formatTelegramApprovalDetailsMessage(
+  approvalRequest: ApprovalRequestDocument,
+): string {
+  const summary = summarizeApprovalRequest({ approvalRequest });
+  const lines = [
+    '🤖 BRB — Technical Details',
+    '',
+    `Summary: ${summary.intent}`,
+  ];
+
+  if (summary.raw?.command) {
+    lines.push(`Command: ${summary.raw.command}`);
+  } else {
+    lines.push(`Action: ${summary.exactAction}`);
+  }
+
+  if (summary.raw?.tool) {
+    lines.push(`Tool: ${summary.raw.tool}`);
+  }
+
+  if (summary.target) {
+    lines.push(`Target: ${summary.target}`);
+  }
+
+  if (summary.raw?.cwd) {
+    lines.push(`Directory: ${summary.raw.cwd}`);
+  }
+
+  const filePreview = formatFilePreview(summary.raw?.files);
+
+  if (filePreview) {
+    lines.push(`Files: ${filePreview}`);
+  }
+
+  if (summary.shortContext) {
+    lines.push(`Context: ${summary.shortContext}`);
+  }
+
+  lines.push('', 'Reply: yes / no / why / instructions', `ID: ${summary.approvalId}`);
 
   return lines.join('\n');
 }
@@ -137,14 +156,14 @@ export function formatTelegramPendingApprovalList(
   const lines = ['🤖 BRB — Pending Approvals', ''];
 
   approvalRequests.forEach((approvalRequest, index) => {
-    const rawContext = getRawContext(approvalRequest);
-    const sessionLabel = getSessionLabel(approvalRequest, rawContext);
-    const toolName = getToolName(rawContext);
+    const summary = summarizeApprovalRequest({ approvalRequest });
     const createdAt = approvalRequest.createdAt instanceof Date
       ? approvalRequest.createdAt
       : new Date(approvalRequest.createdAt);
+    const primaryLabel = summary.target ?? 'Claude session';
+    const secondaryLabel = summary.title.toLowerCase();
 
-    lines.push(`${index + 1}. ${sessionLabel} — ${toolName} — ${formatTimeAgo(createdAt)}`);
+    lines.push(`${index + 1}. ${primaryLabel} — ${secondaryLabel} — ${formatTimeAgo(createdAt)}`);
   });
 
   lines.push('', 'Reply with a number to target a specific approval, or keep replying to the most recent one.');
@@ -156,13 +175,11 @@ export function formatTelegramSelectedApprovalPrompt(
   approvalRequest: ApprovalRequestDocument,
   selectionIndex: number,
 ): string {
-  const rawContext = getRawContext(approvalRequest);
-  const sessionLabel = getSessionLabel(approvalRequest, rawContext);
-  const toolName = getToolName(rawContext);
+  const summary = summarizeApprovalRequest({ approvalRequest });
 
   return [
-    `Selected #${selectionIndex}: ${sessionLabel} — ${toolName}`,
-    'Reply yes/no or send instructions for this approval.',
+    `Selected #${selectionIndex}: ${summary.intent}`,
+    'Reply yes / no / why / details, or send instructions for this approval.',
   ].join('\n');
 }
 
