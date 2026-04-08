@@ -14,6 +14,8 @@ const claudeHookEventSchema = new Schema(
     hookEventName: { type: String, required: true, index: true },
     toolName: { type: String, required: false },
     sessionId: { type: String, required: false },
+    sessionTitle: { type: String, required: false },
+    derivedSessionLabel: { type: String, required: false },
     cwd: { type: String, required: false },
     transcriptPath: { type: String, required: false },
     rawPayload: { type: Schema.Types.Mixed, required: true },

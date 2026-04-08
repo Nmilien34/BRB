@@ -29,6 +29,7 @@ const approvalRequestSchema = new Schema(
     },
     requestType: { type: String, required: true, index: true },
     summary: { type: String, required: true },
+    sessionLabel: { type: String, required: false },
     rawContext: { type: Schema.Types.Mixed, required: false },
     dedupeKey: { type: String, required: false, index: true },
     status: {

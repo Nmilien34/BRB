@@ -41,6 +41,11 @@ export interface BridgeApprovalStatusResponse {
   resolvedAt: Date | null;
 }
 
+interface OpenApprovalRequestListItem {
+  approvalRequest: ApprovalRequestDocument;
+  index: number;
+}
+
 function isPastDeadline(approvalRequest: ApprovalRequestDocument): boolean {
   return Boolean(
     approvalRequest.deadlineAt &&
@@ -158,6 +163,7 @@ export async function createApprovalRequestFromClaudeEvent({
     sourceEventId: sourceEvent._id,
     requestType: candidate.requestType,
     summary: candidate.summary,
+    sessionLabel: candidate.sessionLabel,
     rawContext: candidate.rawContext,
     dedupeKey: candidate.dedupeKey,
     status: 'pending',
@@ -275,6 +281,75 @@ export async function findLatestOpenApprovalRequestForUser(
   }
 
   return null;
+}
+
+export async function listOpenApprovalRequestsForUser(
+  userId: UserDocument['_id'],
+): Promise<ApprovalRequestDocument[]> {
+  const approvalRequests = await ApprovalRequest.find({
+    userId,
+    status: { $in: OPEN_APPROVAL_STATUSES },
+  }).sort({ createdAt: -1 });
+
+  const openApprovals: ApprovalRequestDocument[] = [];
+
+  for (const approvalRequest of approvalRequests) {
+    const currentApproval = await lazilyExpireApprovalRequest(approvalRequest);
+
+    if (OPEN_APPROVAL_STATUSES.includes(currentApproval.status)) {
+      openApprovals.push(currentApproval);
+    }
+  }
+
+  return openApprovals;
+}
+
+export async function countOpenApprovalRequestsForUser(
+  userId: UserDocument['_id'],
+): Promise<number> {
+  const approvals = await listOpenApprovalRequestsForUser(userId);
+  return approvals.length;
+}
+
+export async function getOpenApprovalRequestForUserByIndex(
+  userId: UserDocument['_id'],
+  index: number,
+): Promise<OpenApprovalRequestListItem | null> {
+  if (!Number.isInteger(index) || index < 1) {
+    return null;
+  }
+
+  const approvals = await listOpenApprovalRequestsForUser(userId);
+  const approvalRequest = approvals[index - 1];
+
+  if (!approvalRequest) {
+    return null;
+  }
+
+  return { approvalRequest, index };
+}
+
+export async function getOpenApprovalRequestForUserById(
+  userId: UserDocument['_id'],
+  approvalRequestId: string,
+): Promise<ApprovalRequestDocument | null> {
+  const approvalRequest = await ApprovalRequest.findOne({
+    _id: approvalRequestId,
+    userId,
+    status: { $in: OPEN_APPROVAL_STATUSES },
+  });
+
+  if (!approvalRequest) {
+    return null;
+  }
+
+  const currentApproval = await lazilyExpireApprovalRequest(approvalRequest);
+
+  if (!OPEN_APPROVAL_STATUSES.includes(currentApproval.status)) {
+    return null;
+  }
+
+  return currentApproval;
 }
 
 export async function getApprovalRequestBridgeStatus(

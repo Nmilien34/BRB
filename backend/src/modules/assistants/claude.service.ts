@@ -301,6 +301,8 @@ export async function ingestClaudeBridgeEvent(
     hookEventName: normalizedEvent.hookEventName,
     toolName: normalizedEvent.toolName,
     sessionId: normalizedEvent.sessionId,
+    sessionTitle: normalizedEvent.sessionTitle,
+    derivedSessionLabel: normalizedEvent.derivedSessionLabel,
     cwd: normalizedEvent.cwd,
     transcriptPath: normalizedEvent.transcriptPath,
     rawPayload: body,

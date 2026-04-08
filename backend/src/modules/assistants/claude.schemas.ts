@@ -19,6 +19,8 @@ export const bridgeEventBodySchema = z
     tool_name: z.string().trim().min(1).max(256).optional(),
     sessionId: z.string().trim().min(1).max(256).optional(),
     session_id: z.string().trim().min(1).max(256).optional(),
+    sessionTitle: z.string().trim().min(1).max(256).optional(),
+    session_title: z.string().trim().min(1).max(256).optional(),
     cwd: z.string().trim().min(1).max(4096).optional(),
     projectPath: z.string().trim().min(1).max(4096).optional(),
     project_path: z.string().trim().min(1).max(4096).optional(),

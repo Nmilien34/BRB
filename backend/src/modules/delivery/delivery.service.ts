@@ -1,7 +1,10 @@
 import { ChannelConnection } from '../channel-connections/channel-connection.model.js';
 import type { ApprovalRequestDocument } from '../approval-requests/approval-request.model.js';
 import { logger } from '../../utils/index.js';
-import { markApprovalRequestDelivered } from '../approval-requests/approval-request.service.js';
+import {
+  countOpenApprovalRequestsForUser,
+  markApprovalRequestDelivered,
+} from '../approval-requests/approval-request.service.js';
 import { formatTelegramApprovalMessage } from './formatters/approval-message.formatter.js';
 import { sendTelegramDeliveryMessage } from './providers/telegram.delivery.js';
 
@@ -20,7 +23,8 @@ export async function deliverApprovalRequest(
     return { delivered: false, channelType: null };
   }
 
-  const message = formatTelegramApprovalMessage(approvalRequest);
+  const openApprovalCount = await countOpenApprovalRequestsForUser(approvalRequest.userId);
+  const message = formatTelegramApprovalMessage(approvalRequest, Math.max(0, openApprovalCount - 1));
 
   await sendTelegramDeliveryMessage(telegramConnection.identifier, message);
   await markApprovalRequestDelivered(approvalRequest, 'telegram');

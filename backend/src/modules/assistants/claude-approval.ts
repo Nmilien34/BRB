@@ -1,11 +1,13 @@
 import { createHash } from 'node:crypto';
 import type { BridgeEventBody } from './claude.schemas.js';
+import { deriveSessionLabel } from './claude-session-label.js';
 
 export type ClaudeBridgeAction = 'pass_through' | 'log_only' | 'remote_candidate';
 
 export interface ClaudeApprovalCandidate {
   requestType: 'permission_request';
   summary: string;
+  sessionLabel: string;
   rawContext: Record<string, unknown>;
   dedupeKey: string;
 }
@@ -14,6 +16,8 @@ export interface NormalizedClaudeEvent {
   hookEventName: string;
   toolName?: string;
   sessionId?: string;
+  sessionTitle?: string;
+  derivedSessionLabel: string;
   cwd?: string;
   transcriptPath?: string;
   projectPath?: string;
@@ -96,6 +100,8 @@ function buildApprovalCandidate(
   hookEventName: string,
   toolName: string | undefined,
   sessionId: string | undefined,
+  sessionTitle: string | undefined,
+  derivedSessionLabel: string,
   cwd: string | undefined,
   transcriptPath: string | undefined,
   projectPath: string | undefined,
@@ -115,6 +121,8 @@ function buildApprovalCandidate(
     hookEventName,
     toolName,
     sessionId,
+    sessionTitle,
+    sessionLabel: derivedSessionLabel,
     cwd,
     transcriptPath,
     projectPath,
@@ -125,6 +133,7 @@ function buildApprovalCandidate(
   return {
     requestType: 'permission_request',
     summary: buildPermissionSummary(toolName, reason),
+    sessionLabel: derivedSessionLabel,
     rawContext,
     dedupeKey: createDedupeKey(rawContext),
   };
@@ -136,14 +145,23 @@ export function normalizeClaudeEvent(rawPayload: BridgeEventBody): NormalizedCla
     firstString(payload, ['hookEventName', 'eventName', 'hook_event_name', 'event']) ?? 'unknown';
   const toolName = firstString(payload, ['toolName', 'tool_name']);
   const sessionId = firstString(payload, ['sessionId', 'session_id']);
+  const sessionTitle = firstString(payload, ['sessionTitle', 'session_title']);
   const cwd = firstString(payload, ['cwd']);
   const projectPath = firstString(payload, ['projectPath', 'project_path']);
   const transcriptPath = firstString(payload, ['transcriptPath', 'transcript_path']);
+  const derivedSessionLabel = deriveSessionLabel({
+    sessionTitle,
+    cwd: cwd ?? projectPath,
+    transcriptPath,
+    sessionId,
+  });
   const normalizedSummary = buildNormalizedSummary(hookEventName, toolName);
   const approvalCandidate = buildApprovalCandidate(
     hookEventName,
     toolName,
     sessionId,
+    sessionTitle,
+    derivedSessionLabel,
     cwd,
     transcriptPath,
     projectPath,
@@ -154,6 +172,8 @@ export function normalizeClaudeEvent(rawPayload: BridgeEventBody): NormalizedCla
     hookEventName,
     toolName,
     sessionId,
+    sessionTitle,
+    derivedSessionLabel,
     cwd,
     projectPath,
     transcriptPath,

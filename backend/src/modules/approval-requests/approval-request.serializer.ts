@@ -8,6 +8,7 @@ export interface PublicApprovalRequest {
   sourceEventId: string | null;
   requestType: string;
   summary: string;
+  sessionLabel: string | null;
   rawContext: unknown;
   status: ApprovalRequestStatus;
   selectedChannelType: ChannelConnectionType | null;
@@ -37,6 +38,7 @@ export function serializeApprovalRequest(approvalRequest: ApprovalRequestDocumen
       : null,
     requestType: timestampedApprovalRequest.requestType,
     summary: timestampedApprovalRequest.summary,
+    sessionLabel: timestampedApprovalRequest.sessionLabel ?? null,
     rawContext: timestampedApprovalRequest.rawContext ?? null,
     status: timestampedApprovalRequest.status,
     selectedChannelType: timestampedApprovalRequest.selectedChannelType ?? null,

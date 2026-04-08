@@ -1,5 +1,9 @@
 import type { ApprovalRequestDocument } from '../../approval-requests/approval-request.model.js';
 
+function getShortApprovalId(approvalId: string): string {
+  return approvalId.slice(-6);
+}
+
 function truncate(value: string, maxLength: number): string {
   if (value.length <= maxLength) {
     return value;
@@ -43,43 +47,123 @@ function getRawContext(approvalRequest: ApprovalRequestDocument): Record<string,
   return approvalRequest.rawContext as Record<string, unknown>;
 }
 
-export function formatTelegramApprovalMessage(approvalRequest: ApprovalRequestDocument): string {
+function formatTimeAgo(date: Date): string {
+  const diffMs = Math.max(0, Date.now() - date.getTime());
+  const diffMinutes = Math.floor(diffMs / 60_000);
+
+  if (diffMinutes < 1) {
+    return 'just now';
+  }
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes}m ago`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+
+  if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
+function getToolName(rawContext: Record<string, unknown>): string {
+  return (typeof rawContext.toolName === 'string' && rawContext.toolName.trim()) || 'Unknown tool';
+}
+
+function getSessionLabel(approvalRequest: ApprovalRequestDocument, rawContext: Record<string, unknown>): string {
+  if (approvalRequest.sessionLabel?.trim()) {
+    return approvalRequest.sessionLabel.trim();
+  }
+
+  if (typeof rawContext.sessionLabel === 'string' && rawContext.sessionLabel.trim()) {
+    return rawContext.sessionLabel.trim();
+  }
+
+  return 'Claude session';
+}
+
+export function formatTelegramApprovalMessage(
+  approvalRequest: ApprovalRequestDocument,
+  otherPendingCount = 0,
+): string {
   const rawContext = getRawContext(approvalRequest);
-  const toolName =
-    (typeof rawContext.toolName === 'string' && rawContext.toolName.trim()) || 'a tool';
+  const toolName = getToolName(rawContext);
+  const sessionLabel = getSessionLabel(approvalRequest, rawContext);
   const command = stringifyToolInput(rawContext.toolInput);
   const cwd =
     (typeof rawContext.cwd === 'string' && rawContext.cwd.trim()) ||
     (typeof rawContext.projectPath === 'string' && rawContext.projectPath.trim()) ||
     null;
-  const reason = typeof rawContext.reason === 'string' && rawContext.reason.trim()
-    ? truncate(rawContext.reason.trim(), 280)
-    : approvalRequest.summary;
+  const toolInputSummary = command ??
+    (typeof rawContext.reason === 'string' && rawContext.reason.trim()
+      ? truncate(rawContext.reason.trim(), 280)
+      : truncate(approvalRequest.summary, 280));
 
   const lines = [
-    '🤖 BRB - Approval Request',
+    '🤖 BRB — Approval Request',
     '',
-    `Claude wants to use: ${toolName}`,
-    `Request: ${reason}`,
+    `📁 ${sessionLabel}`,
+    `🛠 Tool: ${toolName}`,
+    `⚡ ${toolInputSummary}`,
   ];
 
-  if (command) {
-    lines.push(`Command: ${command}`);
+  if (cwd) {
+    lines.push(`📂 ${cwd}`);
   }
 
-  if (cwd) {
-    lines.push(`Directory: ${cwd}`);
+  if (otherPendingCount > 0) {
+    lines.push('', `⚠️ ${otherPendingCount} other approvals pending — reply "list" to see all`);
   }
 
   lines.push(
     '',
-    'Reply with:',
-    'yes - approve',
-    'no - deny',
-    'anything else - send as instruction',
+    'Reply:',
+    '✅ yes — approve',
+    '❌ no — deny',
+    '💬 anything else — send as instruction',
+    '',
+    `ID: ${getShortApprovalId(approvalRequest.id)}`,
   );
 
   return lines.join('\n');
+}
+
+export function formatTelegramPendingApprovalList(
+  approvalRequests: ApprovalRequestDocument[],
+): string {
+  const lines = ['🤖 BRB — Pending Approvals', ''];
+
+  approvalRequests.forEach((approvalRequest, index) => {
+    const rawContext = getRawContext(approvalRequest);
+    const sessionLabel = getSessionLabel(approvalRequest, rawContext);
+    const toolName = getToolName(rawContext);
+    const createdAt = approvalRequest.createdAt instanceof Date
+      ? approvalRequest.createdAt
+      : new Date(approvalRequest.createdAt);
+
+    lines.push(`${index + 1}. ${sessionLabel} — ${toolName} — ${formatTimeAgo(createdAt)}`);
+  });
+
+  lines.push('', 'Reply with a number to target a specific approval, or keep replying to the most recent one.');
+
+  return lines.join('\n');
+}
+
+export function formatTelegramSelectedApprovalPrompt(
+  approvalRequest: ApprovalRequestDocument,
+  selectionIndex: number,
+): string {
+  const rawContext = getRawContext(approvalRequest);
+  const sessionLabel = getSessionLabel(approvalRequest, rawContext);
+  const toolName = getToolName(rawContext);
+
+  return [
+    `Selected #${selectionIndex}: ${sessionLabel} — ${toolName}`,
+    'Reply yes/no or send instructions for this approval.',
+  ].join('\n');
 }
 
 export function formatTelegramApprovalConfirmation(
