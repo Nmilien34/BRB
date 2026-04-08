@@ -21,14 +21,27 @@ import {
   determineClaudeBridgeAction,
   normalizeClaudeEvent,
 } from './claude-approval.js';
-import type { BridgeConnectBody, BridgeEventBody } from './claude.schemas.js';
+import type {
+  BridgeApprovalResolveBody,
+  BridgeConnectBody,
+  BridgeEventBody,
+  BridgeInstructionResultBody,
+  ClaudeSettingsBody,
+} from './claude.schemas.js';
 import {
   createApprovalRequestFromClaudeEvent,
   getApprovalRequestBridgeStatus,
+  getOpenApprovalRequestForUserById,
+  resolveApprovalRequest,
 } from '../approval-requests/approval-request.service.js';
 import { deliverApprovalRequest } from '../delivery/delivery.service.js';
+import {
+  claimNextRemoteInstructionForClaude,
+  reportRemoteInstructionResultForClaude,
+} from '../remote-instructions/remote-instruction.service.js';
 
 const CLAUDE_ASSISTANT_TYPE = 'claude_code';
+const DEFAULT_ESCALATION_DELAY_MINUTES = 2;
 
 function getConnectionMetadata(connection: AssistantConnectionDocument): Partial<AssistantConnectionMetadata> {
   if (!connection.metadata || typeof connection.metadata !== 'object') {
@@ -82,12 +95,21 @@ function getPublicBaseUrl(req: Request): string {
   return host ? `${protocol}://${host}` : `http://localhost:${env.PORT}`;
 }
 
-function buildClaudeSettingsSnippet(bridgeConnectUrl: string, bridgeEventsUrl: string): string {
+function buildClaudeSettingsSnippet(
+  bridgeConnectUrl: string,
+  bridgeEventsUrl: string,
+  bridgeInstructionsUrl: string,
+  bridgeInstructionResultUrl: string,
+): string {
   const bridgeCommand =
     'BRB_CONNECTION_TOKEN="<paste-connection-token>" BRB_CONNECT_URL="' +
     bridgeConnectUrl +
     '" BRB_EVENTS_URL="' +
     bridgeEventsUrl +
+    '" BRB_INSTRUCTIONS_URL="' +
+    bridgeInstructionsUrl +
+    '" BRB_INSTRUCTION_RESULT_URL="' +
+    bridgeInstructionResultUrl +
     '" node ./brb-claude-bridge.js';
 
   return JSON.stringify(
@@ -111,7 +133,14 @@ function buildClaudeSetupPayload(
 ) {
   const bridgeConnectUrl = `${baseUrl}/api/assistants/claude/bridge/connect`;
   const bridgeEventsUrl = `${baseUrl}/api/assistants/claude/bridge/events`;
-  const settingsSnippet = buildClaudeSettingsSnippet(bridgeConnectUrl, bridgeEventsUrl);
+  const bridgeInstructionsUrl = `${baseUrl}/api/assistants/claude/bridge/instructions/next`;
+  const bridgeInstructionResultUrl = `${baseUrl}/api/assistants/claude/bridge/instructions/:instructionId/result`;
+  const settingsSnippet = buildClaudeSettingsSnippet(
+    bridgeConnectUrl,
+    bridgeEventsUrl,
+    bridgeInstructionsUrl,
+    bridgeInstructionResultUrl,
+  );
 
   return {
     assistantType: CLAUDE_ASSISTANT_TYPE,
@@ -120,6 +149,8 @@ function buildClaudeSetupPayload(
     tokenPreview: connection.connectionTokenPreview ?? null,
     bridgeConnectUrl,
     bridgeEventsUrl,
+    bridgeInstructionsUrl,
+    bridgeInstructionResultUrl,
     title: 'Connect Claude Code to BRB',
     description:
       'Install a lightweight local Claude hook bridge that forwards connection pings and hook events to BRB without blocking Claude on remote actions.',
@@ -127,6 +158,7 @@ function buildClaudeSetupPayload(
       'Select Claude Code inside BRB and copy the one-time connection token shown below.',
       'Install or create your local bridge script on the same machine that runs Claude Code.',
       'Set BRB_CONNECTION_TOKEN, BRB_CONNECT_URL, and BRB_EVENTS_URL for the bridge process.',
+      'Configure the bridge poll/report URLs so it can receive Telegram instructions and send Claude replies back to BRB.',
       'Wire the bridge command into Claude hooks for PermissionRequest, PreToolUse, PostToolUse, and Stop.',
       'Run one bridge connect ping locally, then confirm BRB shows the Claude connection as connected.',
     ],
@@ -136,6 +168,10 @@ function buildClaudeSetupPayload(
       bridgeConnectUrl +
       '" BRB_EVENTS_URL="' +
       bridgeEventsUrl +
+      '" BRB_INSTRUCTIONS_URL="' +
+      bridgeInstructionsUrl +
+      '" BRB_INSTRUCTION_RESULT_URL="' +
+      bridgeInstructionResultUrl +
       '" node ./brb-claude-bridge.js',
     connection: serializeAssistantConnection(connection),
   };
@@ -147,6 +183,7 @@ function buildClaudeStatusResponse(connection: AssistantConnectionDocument | nul
     status: connection?.status ?? 'disconnected',
     awayModeEnabled: connection?.awayModeEnabled ?? false,
     awayModeActivatedAt: connection?.awayModeActivatedAt ?? null,
+    escalationDelayMinutes: connection?.escalationDelayMinutes ?? DEFAULT_ESCALATION_DELAY_MINUTES,
     lastConnectedAt: connection?.lastConnectedAt ?? null,
     lastEventAt: connection?.lastEventAt ?? null,
     tokenPreview: connection?.connectionTokenPreview ?? null,
@@ -187,6 +224,7 @@ export async function selectClaudeConnectionForUser(user: UserDocument) {
       assistantType: CLAUDE_ASSISTANT_TYPE,
       status: 'selected',
       authMethod: 'hook',
+      escalationDelayMinutes: DEFAULT_ESCALATION_DELAY_MINUTES,
     });
   } else if (
     !isClaudeConnectionStatus(connection.status) ||
@@ -254,9 +292,25 @@ export async function getClaudeAwayModeStatus(user: UserDocument) {
     status: connection?.status ?? 'disconnected',
     awayModeEnabled: connection?.awayModeEnabled ?? false,
     awayModeActivatedAt: connection?.awayModeActivatedAt ?? null,
+    escalationDelayMinutes: connection?.escalationDelayMinutes ?? DEFAULT_ESCALATION_DELAY_MINUTES,
     lastConnectedAt: connection?.lastConnectedAt ?? null,
     lastEventAt: connection?.lastEventAt ?? null,
   };
+}
+
+export async function updateClaudeSettings(user: UserDocument, body: ClaudeSettingsBody) {
+  let connection = await findClaudeConnectionForUser(user);
+
+  if (!connection) {
+    await selectClaudeConnectionForUser(user);
+    connection = await findClaudeConnectionForUser(user);
+  }
+
+  const ensuredConnection = ensureSupportedClaudeConnection(connection);
+  ensuredConnection.escalationDelayMinutes = body.escalationDelayMinutes;
+  await ensuredConnection.save();
+
+  return buildClaudeStatusResponse(ensuredConnection);
 }
 
 export async function handleClaudeBridgeConnect(
@@ -324,16 +378,18 @@ export async function ingestClaudeBridgeEvent(
 
   let approvalId: string | null = null;
 
-  if (normalizedEvent.approvalCandidate && connection.awayModeEnabled) {
+  if (normalizedEvent.approvalCandidate) {
     const approvalResult = await createApprovalRequestFromClaudeEvent({
       assistantConnection: connection,
       sourceEvent,
       candidate: normalizedEvent.approvalCandidate,
+      escalationMode: connection.awayModeEnabled ? 'manual_away' : 'timer_based',
+      escalationDelayMinutes: connection.escalationDelayMinutes,
     });
 
     approvalId = approvalResult.approval.id;
 
-    if (approvalResult.created) {
+    if (approvalResult.created && connection.awayModeEnabled) {
       void deliverApprovalRequest(approvalResult.approvalRequest).catch((error) => {
         logger.error(
           {
@@ -344,16 +400,17 @@ export async function ingestClaudeBridgeEvent(
           'Approval delivery failed after Claude event ingest',
         );
       });
+    } else if (approvalResult.created) {
+      logger.info(
+        {
+          approvalRequestId: approvalResult.approval.id,
+          assistantConnectionId: String(connection._id),
+          desktopTimeoutAt: approvalResult.approval.desktopTimeoutAt,
+          escalationDelayMinutes: connection.escalationDelayMinutes ?? DEFAULT_ESCALATION_DELAY_MINUTES,
+        },
+        'Queued local-first approval with delayed Telegram escalation',
+      );
     }
-  } else if (normalizedEvent.approvalCandidate) {
-    logger.info(
-      {
-        assistantConnectionId: String(connection._id),
-        sourceEventId: String(sourceEvent._id),
-        hookEventName: normalizedEvent.hookEventName,
-      },
-      'Skipped approval creation because away mode is off',
-    );
   } else {
     logger.info(
       {
@@ -379,6 +436,45 @@ export async function getClaudeBridgeApprovalStatus(
   approvalId: string,
 ) {
   return getApprovalRequestBridgeStatus(connection, approvalId);
+}
+
+export async function claimClaudeBridgeInstruction(connection: AssistantConnectionDocument) {
+  return claimNextRemoteInstructionForClaude(connection);
+}
+
+export async function reportClaudeBridgeInstructionResult(
+  connection: AssistantConnectionDocument,
+  instructionId: string,
+  body: BridgeInstructionResultBody,
+) {
+  return reportRemoteInstructionResultForClaude(connection, instructionId, body);
+}
+
+export async function resolveClaudeBridgeApprovalLocally(
+  connection: AssistantConnectionDocument,
+  approvalId: string,
+  body: BridgeApprovalResolveBody,
+) {
+  const approvalRequest = await getOpenApprovalRequestForUserById(connection.userId, approvalId);
+
+  if (!approvalRequest || String(approvalRequest.assistantConnectionId) !== String(connection._id)) {
+    throw new HttpError(404, 'Approval request not found.');
+  }
+
+  const resolvedApproval = await resolveApprovalRequest(approvalRequest, {
+    status: body.resolution,
+    resolutionSource: body.source,
+    resolutionNote: `Resolved ${body.resolution} locally by Claude bridge.`,
+    escalationStatus: 'resolved_locally',
+  });
+
+  return {
+    ok: true,
+    approvalId: resolvedApproval.id,
+    status: resolvedApproval.status,
+    escalationStatus: resolvedApproval.escalationStatus,
+    resolvedAt: resolvedApproval.resolvedAt ?? null,
+  };
 }
 
 export function serializeClaudeConnection(

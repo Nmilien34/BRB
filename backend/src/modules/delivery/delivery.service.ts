@@ -3,6 +3,7 @@ import type { ApprovalRequestDocument } from '../approval-requests/approval-requ
 import { logger } from '../../utils/index.js';
 import {
   countOpenApprovalRequestsForUser,
+  markApprovalRequestEscalated,
   markApprovalRequestDelivered,
 } from '../approval-requests/approval-request.service.js';
 import { formatTelegramApprovalMessage } from './formatters/approval-message.formatter.js';
@@ -28,6 +29,7 @@ export async function deliverApprovalRequest(
 
   await sendTelegramDeliveryMessage(telegramConnection.identifier, message);
   await markApprovalRequestDelivered(approvalRequest, 'telegram');
+  await markApprovalRequestEscalated(approvalRequest);
 
   return { delivered: true, channelType: 'telegram' };
 }

@@ -26,6 +26,7 @@ const assistantConnectionSchema = new Schema(
     metadata: { type: Schema.Types.Mixed, default: () => ({}) },
     awayModeEnabled: { type: Boolean, default: false, required: true },
     awayModeActivatedAt: { type: Date, default: null },
+    escalationDelayMinutes: { type: Number, default: 2, required: true },
     lastConnectedAt: { type: Date, default: null },
     lastEventAt: { type: Date, default: null },
   },

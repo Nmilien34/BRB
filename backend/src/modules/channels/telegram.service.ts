@@ -22,9 +22,12 @@ import {
   formatTelegramSelectedApprovalPrompt,
   formatTelegramApprovalWhyMessage,
 } from '../delivery/formatters/approval-message.formatter.js';
+import { queueTelegramInstructionForClaude } from '../remote-instructions/remote-instruction.service.js';
 
 const TELEGRAM_CHANNEL_TYPE = 'telegram';
 const CONNECT_TOKEN_EXPIRY_MS = 15 * 60 * 1000;
+const NO_PENDING_APPROVALS_MESSAGE =
+  'No pending approvals right now.\nTo send Claude a new instruction, start your message with "Claude ...".';
 
 interface TelegramConnectionMetadata {
   telegramUserId?: string | null;
@@ -181,6 +184,24 @@ function parseApprovalCommand(text: string): TelegramApprovalCommand {
   }
 
   return { type: 'resolve', subject: 'current', replyText: trimmed };
+}
+
+function parseClaudeInstructionPrompt(text: string): { mentioned: boolean; prompt: string | null } {
+  const trimmed = text.trim();
+  const hasClaudePrefix = /^claude\b/i.test(trimmed);
+
+  if (!hasClaudePrefix) {
+    return { mentioned: false, prompt: null };
+  }
+
+  const match = trimmed.match(/^claude(?:[\s,:-]+)(.+)$/is);
+
+  if (!match?.[1]) {
+    return { mentioned: true, prompt: null };
+  }
+
+  const prompt = match[1].trim();
+  return { mentioned: true, prompt: prompt.length > 0 ? prompt : null };
 }
 
 async function findTelegramConnectionForUser(user: UserDocument): Promise<ChannelConnectionDocument | null> {
@@ -480,10 +501,7 @@ async function handleApprovalReply(update: TelegramWebhookUpdate): Promise<void>
         { updateId: update.update_id, userId: String(connectedChannel.userId), chatId },
         'Unknown Telegram message received because there are no pending approvals',
       );
-      await sendTelegramMessageBestEffort(
-        chatId,
-        'No pending approvals right now.\nMake sure away mode is on in BRB to receive requests.',
-      );
+      await sendTelegramMessageBestEffort(chatId, NO_PENDING_APPROVALS_MESSAGE);
       return;
     }
 
@@ -546,10 +564,7 @@ async function handleApprovalReply(update: TelegramWebhookUpdate): Promise<void>
       { updateId: update.update_id, userId: String(connectedChannel.userId), chatId },
       'Unknown Telegram message received because there are no pending approvals',
     );
-    await sendTelegramMessageBestEffort(
-      chatId,
-      'No pending approvals right now.\nMake sure away mode is on in BRB to receive requests.',
-    );
+    await sendTelegramMessageBestEffort(chatId, NO_PENDING_APPROVALS_MESSAGE);
     return;
   }
 
@@ -598,6 +613,68 @@ async function handleApprovalReply(update: TelegramWebhookUpdate): Promise<void>
   );
 }
 
+async function handleTelegramClaudeInstruction(update: TelegramWebhookUpdate): Promise<boolean> {
+  const message = update.message ?? update.edited_message;
+  const text = message?.text?.trim();
+  const chatId = message?.chat ? String(message.chat.id) : null;
+
+  if (!text || !chatId) {
+    return false;
+  }
+
+  const { mentioned, prompt } = parseClaudeInstructionPrompt(text);
+
+  if (!mentioned) {
+    return false;
+  }
+
+  const channelConnection = await findTelegramConnectionByChatId(chatId);
+
+  if (!channelConnection) {
+    logger.info({ updateId: update.update_id, chatId }, 'Unknown Telegram Claude instruction received');
+    return true;
+  }
+
+  logger.info(
+    { updateId: update.update_id, userId: String(channelConnection.userId), chatId },
+    'Telegram Claude instruction received',
+  );
+
+  if (!prompt) {
+    await sendTelegramMessageBestEffort(
+      chatId,
+      'Start your message with "Claude" followed by what you want it to do.\nExample: Claude, check my last few commits and tell me what you were working on.',
+    );
+    return true;
+  }
+
+  try {
+    await queueTelegramInstructionForClaude({
+      userId: channelConnection.userId,
+      sourceChannelConnectionId: channelConnection.id,
+      prompt,
+    });
+  } catch (error) {
+    logger.warn({ err: error, updateId: update.update_id, chatId }, 'Failed to queue Telegram Claude instruction');
+
+    if (error instanceof HttpError) {
+      await sendTelegramMessageBestEffort(
+        chatId,
+        error.status === 409
+          ? 'Claude is not connected right now. Open Claude on your computer first, then try again.'
+          : 'I could not send that to Claude right now. Please try again shortly.',
+      );
+    } else {
+      await sendTelegramMessageBestEffort(
+        chatId,
+        'I could not send that to Claude right now. Please try again shortly.',
+      );
+    }
+  }
+
+  return true;
+}
+
 export async function handleTelegramWebhookUpdate(update: TelegramWebhookUpdate): Promise<void> {
   const message = update.message ?? update.edited_message;
 
@@ -622,6 +699,10 @@ export async function handleTelegramWebhookUpdate(update: TelegramWebhookUpdate)
       );
     }
 
+    return;
+  }
+
+  if (await handleTelegramClaudeInstruction(update)) {
     return;
   }
 

@@ -8,11 +8,14 @@ import { HttpError } from '../../utils/httpError.js';
 import {
   ApprovalRequest,
   type ApprovalRequestDocument,
+  type ApprovalRequestEscalationMode,
+  type ApprovalRequestEscalationStatus,
   type ApprovalRequestStatus,
 } from './approval-request.model.js';
 import { type PublicApprovalRequest, serializeApprovalRequest } from './approval-request.serializer.js';
 
 const APPROVAL_DEADLINE_MS = 10 * 60 * 1000;
+const DEFAULT_DESKTOP_ESCALATION_DELAY_MINUTES = 2;
 const OPEN_APPROVAL_STATUSES: ApprovalRequestStatus[] = ['pending', 'delivered'];
 
 interface ApprovalRequestListFilters {
@@ -23,19 +26,26 @@ interface CreateApprovalRequestFromClaudeEventInput {
   assistantConnection: AssistantConnectionDocument;
   sourceEvent: ClaudeHookEventDocument;
   candidate: ClaudeApprovalCandidate;
+  escalationMode: ApprovalRequestEscalationMode;
+  escalationDelayMinutes?: number | null;
 }
 
 type ApprovalResolutionStatus = 'approved' | 'denied' | 'responded' | 'expired' | 'canceled';
 
 interface ResolveApprovalRequestInput {
   status: ApprovalResolutionStatus;
-  resolutionSource: 'telegram' | 'discord' | 'sms' | 'web' | 'system';
+  resolutionSource: 'local' | 'telegram' | 'discord' | 'sms' | 'web' | 'system';
   resolutionNote?: string | null;
+  escalationStatus?: ApprovalRequestEscalationStatus;
 }
 
 export interface BridgeApprovalStatusResponse {
   approvalId: string;
   status: ApprovalRequestStatus;
+  escalationMode: ApprovalRequestEscalationMode;
+  escalationStatus: ApprovalRequestEscalationStatus;
+  desktopTimeoutAt: Date | null;
+  escalatedAt: Date | null;
   action: 'waiting' | 'approved' | 'denied' | 'instruction' | 'expired';
   instruction: string | null;
   resolvedAt: Date | null;
@@ -54,6 +64,14 @@ function isPastDeadline(approvalRequest: ApprovalRequestDocument): boolean {
   );
 }
 
+function normalizeEscalationDelayMinutes(minutes?: number | null): number {
+  if (typeof minutes !== 'number' || !Number.isFinite(minutes) || minutes <= 0) {
+    return DEFAULT_DESKTOP_ESCALATION_DELAY_MINUTES;
+  }
+
+  return minutes;
+}
+
 async function lazilyExpireApprovalRequest(
   approvalRequest: ApprovalRequestDocument,
 ): Promise<ApprovalRequestDocument> {
@@ -62,6 +80,7 @@ async function lazilyExpireApprovalRequest(
   }
 
   approvalRequest.status = 'expired';
+  approvalRequest.escalationStatus = 'expired';
   approvalRequest.resolvedAt = new Date();
   approvalRequest.resolutionSource = 'system';
   approvalRequest.resolutionNote = 'Approval timed out.';
@@ -79,6 +98,10 @@ function mapApprovalToBridgeResponse(
     return {
       approvalId: approvalRequest.id,
       status: approvalRequest.status,
+      escalationMode: approvalRequest.escalationMode,
+      escalationStatus: approvalRequest.escalationStatus,
+      desktopTimeoutAt: approvalRequest.desktopTimeoutAt ?? null,
+      escalatedAt: approvalRequest.escalatedAt ?? null,
       action: 'approved',
       instruction: null,
       resolvedAt: approvalRequest.resolvedAt ?? null,
@@ -89,6 +112,10 @@ function mapApprovalToBridgeResponse(
     return {
       approvalId: approvalRequest.id,
       status: approvalRequest.status,
+      escalationMode: approvalRequest.escalationMode,
+      escalationStatus: approvalRequest.escalationStatus,
+      desktopTimeoutAt: approvalRequest.desktopTimeoutAt ?? null,
+      escalatedAt: approvalRequest.escalatedAt ?? null,
       action: 'denied',
       instruction: null,
       resolvedAt: approvalRequest.resolvedAt ?? null,
@@ -99,6 +126,10 @@ function mapApprovalToBridgeResponse(
     return {
       approvalId: approvalRequest.id,
       status: approvalRequest.status,
+      escalationMode: approvalRequest.escalationMode,
+      escalationStatus: approvalRequest.escalationStatus,
+      desktopTimeoutAt: approvalRequest.desktopTimeoutAt ?? null,
+      escalatedAt: approvalRequest.escalatedAt ?? null,
       action: 'instruction',
       instruction: approvalRequest.resolutionNote ?? null,
       resolvedAt: approvalRequest.resolvedAt ?? null,
@@ -109,6 +140,10 @@ function mapApprovalToBridgeResponse(
     return {
       approvalId: approvalRequest.id,
       status: approvalRequest.status,
+      escalationMode: approvalRequest.escalationMode,
+      escalationStatus: approvalRequest.escalationStatus,
+      desktopTimeoutAt: approvalRequest.desktopTimeoutAt ?? null,
+      escalatedAt: approvalRequest.escalatedAt ?? null,
       action: 'expired',
       instruction: null,
       resolvedAt: approvalRequest.resolvedAt ?? null,
@@ -118,6 +153,10 @@ function mapApprovalToBridgeResponse(
   return {
     approvalId: approvalRequest.id,
     status: approvalRequest.status,
+    escalationMode: approvalRequest.escalationMode,
+    escalationStatus: approvalRequest.escalationStatus,
+    desktopTimeoutAt: approvalRequest.desktopTimeoutAt ?? null,
+    escalatedAt: approvalRequest.escalatedAt ?? null,
     action: 'waiting',
     instruction: null,
     resolvedAt: null,
@@ -128,6 +167,8 @@ export async function createApprovalRequestFromClaudeEvent({
   assistantConnection,
   sourceEvent,
   candidate,
+  escalationMode,
+  escalationDelayMinutes,
 }: CreateApprovalRequestFromClaudeEventInput): Promise<{
   approvalRequest: ApprovalRequestDocument;
   approval: PublicApprovalRequest;
@@ -156,6 +197,12 @@ export async function createApprovalRequestFromClaudeEvent({
     };
   }
 
+  const now = Date.now();
+  const isManualAway = escalationMode === 'manual_away';
+  const desktopTimeoutAt = isManualAway
+    ? null
+    : new Date(now + normalizeEscalationDelayMinutes(escalationDelayMinutes) * 60 * 1000);
+
   const approvalRequest = await ApprovalRequest.create({
     userId: assistantConnection.userId,
     assistantConnectionId: assistantConnection._id,
@@ -168,8 +215,12 @@ export async function createApprovalRequestFromClaudeEvent({
     dedupeKey: candidate.dedupeKey,
     status: 'pending',
     selectedChannelType: null,
+    escalationStatus: isManualAway ? 'escalated' : 'pending_local',
+    escalationMode,
+    desktopTimeoutAt,
+    escalatedAt: isManualAway ? new Date(now) : null,
     deliveredAt: null,
-    deadlineAt: new Date(Date.now() + APPROVAL_DEADLINE_MS),
+    deadlineAt: new Date(now + APPROVAL_DEADLINE_MS),
   });
 
   logger.info(
@@ -178,6 +229,8 @@ export async function createApprovalRequestFromClaudeEvent({
       assistantConnectionId: String(assistantConnection._id),
       sourceEventId: String(sourceEvent._id),
       requestType: candidate.requestType,
+      escalationMode,
+      desktopTimeoutAt,
     },
     'Created Claude approval request',
   );
@@ -236,6 +289,20 @@ export async function markApprovalRequestDelivered(
   return approvalRequest;
 }
 
+export async function markApprovalRequestEscalated(
+  approvalRequest: ApprovalRequestDocument,
+): Promise<ApprovalRequestDocument> {
+  if (!OPEN_APPROVAL_STATUSES.includes(approvalRequest.status)) {
+    return approvalRequest;
+  }
+
+  approvalRequest.escalationStatus = 'escalated';
+  approvalRequest.escalatedAt = approvalRequest.escalatedAt ?? new Date();
+  await approvalRequest.save();
+
+  return approvalRequest;
+}
+
 export async function resolveApprovalRequest(
   approvalRequest: ApprovalRequestDocument,
   input: ResolveApprovalRequestInput,
@@ -247,6 +314,7 @@ export async function resolveApprovalRequest(
   }
 
   currentApproval.status = input.status;
+  currentApproval.escalationStatus = input.escalationStatus ?? currentApproval.escalationStatus;
   currentApproval.resolutionSource = input.resolutionSource;
   currentApproval.resolutionNote = input.resolutionNote ?? null;
   currentApproval.resolvedAt = new Date();
@@ -350,6 +418,34 @@ export async function getOpenApprovalRequestForUserById(
   }
 
   return currentApproval;
+}
+
+export async function listDueTimerEscalationApprovalRequests(
+  now: Date = new Date(),
+): Promise<ApprovalRequestDocument[]> {
+  const approvalRequests = await ApprovalRequest.find({
+    escalationStatus: 'pending_local',
+    desktopTimeoutAt: { $ne: null, $lte: now },
+    escalatedAt: null,
+    status: 'pending',
+  }).sort({ desktopTimeoutAt: 1, createdAt: 1 });
+
+  const dueApprovals: ApprovalRequestDocument[] = [];
+
+  for (const approvalRequest of approvalRequests) {
+    const currentApproval = await lazilyExpireApprovalRequest(approvalRequest);
+
+    if (
+      currentApproval.status === 'pending' &&
+      currentApproval.escalationStatus === 'pending_local' &&
+      currentApproval.desktopTimeoutAt &&
+      currentApproval.desktopTimeoutAt.getTime() <= now.getTime()
+    ) {
+      dueApprovals.push(currentApproval);
+    }
+  }
+
+  return dueApprovals;
 }
 
 export async function getApprovalRequestBridgeStatus(

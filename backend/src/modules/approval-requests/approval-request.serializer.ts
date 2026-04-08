@@ -1,5 +1,10 @@
 import type { ChannelConnectionType } from '../channel-connections/channel-connection.model.js';
-import type { ApprovalRequestDocument, ApprovalRequestStatus } from './approval-request.model.js';
+import type {
+  ApprovalRequestDocument,
+  ApprovalRequestEscalationMode,
+  ApprovalRequestEscalationStatus,
+  ApprovalRequestStatus,
+} from './approval-request.model.js';
 
 export interface PublicApprovalRequest {
   id: string;
@@ -12,6 +17,10 @@ export interface PublicApprovalRequest {
   rawContext: unknown;
   status: ApprovalRequestStatus;
   selectedChannelType: ChannelConnectionType | null;
+  escalationStatus: ApprovalRequestEscalationStatus;
+  escalationMode: ApprovalRequestEscalationMode;
+  desktopTimeoutAt: Date | null;
+  escalatedAt: Date | null;
   deliveredAt: Date | null;
   deadlineAt: Date | null;
   resolvedAt: Date | null;
@@ -42,6 +51,10 @@ export function serializeApprovalRequest(approvalRequest: ApprovalRequestDocumen
     rawContext: timestampedApprovalRequest.rawContext ?? null,
     status: timestampedApprovalRequest.status,
     selectedChannelType: timestampedApprovalRequest.selectedChannelType ?? null,
+    escalationStatus: timestampedApprovalRequest.escalationStatus,
+    escalationMode: timestampedApprovalRequest.escalationMode,
+    desktopTimeoutAt: timestampedApprovalRequest.desktopTimeoutAt ?? null,
+    escalatedAt: timestampedApprovalRequest.escalatedAt ?? null,
     deliveredAt: timestampedApprovalRequest.deliveredAt ?? null,
     deadlineAt: timestampedApprovalRequest.deadlineAt ?? null,
     resolvedAt: timestampedApprovalRequest.resolvedAt ?? null,

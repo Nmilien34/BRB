@@ -39,6 +39,7 @@ export function serializeAssistantConnection(
     tokenPreview: timestampedAssistant.connectionTokenPreview ?? null,
     awayModeEnabled: timestampedAssistant.awayModeEnabled,
     awayModeActivatedAt: timestampedAssistant.awayModeActivatedAt ?? null,
+    escalationDelayMinutes: timestampedAssistant.escalationDelayMinutes ?? 2,
     lastConnectedAt: timestampedAssistant.lastConnectedAt ?? null,
     lastEventAt: timestampedAssistant.lastEventAt ?? null,
     metadata: serializeMetadata(timestampedAssistant.metadata),

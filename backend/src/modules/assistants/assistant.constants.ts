@@ -28,6 +28,7 @@ export interface PublicAssistantConnection {
   tokenPreview: string | null;
   awayModeEnabled: boolean;
   awayModeActivatedAt: Date | null;
+  escalationDelayMinutes: number;
   lastConnectedAt: Date | null;
   lastEventAt: Date | null;
   metadata: AssistantConnectionMetadata;
