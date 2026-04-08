@@ -6,6 +6,7 @@ export const approvalRequestStatuses = [
   'delivered',
   'approved',
   'denied',
+  'responded',
   'expired',
   'canceled',
 ] as const;
@@ -29,6 +30,7 @@ const approvalRequestSchema = new Schema(
     requestType: { type: String, required: true, index: true },
     summary: { type: String, required: true },
     rawContext: { type: Schema.Types.Mixed, required: false },
+    dedupeKey: { type: String, required: false, index: true },
     status: {
       type: String,
       enum: approvalRequestStatuses,
@@ -40,7 +42,9 @@ const approvalRequestSchema = new Schema(
       type: String,
       enum: channelConnectionTypes,
       required: false,
+      default: null,
     },
+    deliveredAt: { type: Date, default: null },
     deadlineAt: { type: Date, default: null },
     resolvedAt: { type: Date, default: null },
     resolutionSource: { type: String, required: false },
@@ -51,6 +55,7 @@ const approvalRequestSchema = new Schema(
 
 approvalRequestSchema.index({ userId: 1, status: 1, createdAt: -1 });
 approvalRequestSchema.index({ assistantConnectionId: 1, createdAt: -1 });
+approvalRequestSchema.index({ assistantConnectionId: 1, dedupeKey: 1, status: 1, createdAt: -1 });
 
 export type ApprovalRequestStatus = (typeof approvalRequestStatuses)[number];
 export type IApprovalRequest = InferSchemaType<typeof approvalRequestSchema>;

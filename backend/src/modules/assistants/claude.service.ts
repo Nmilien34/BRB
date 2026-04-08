@@ -1,8 +1,9 @@
 import type { Request } from 'express';
 import { env } from '../../config/index.js';
-import type { UserDocument } from '../users/user.model.js';
+import { User, type UserDocument } from '../users/user.model.js';
 import { advanceOnboardingStatus } from '../users/user.constants.js';
 import { serializeUser } from '../users/user.serializer.js';
+import { logger } from '../../utils/index.js';
 import { HttpError } from '../../utils/httpError.js';
 import {
   type AssistantConnectionDocument,
@@ -16,22 +17,18 @@ import {
 } from './assistant.constants.js';
 import { serializeAssistantConnection } from './assistant.serializer.js';
 import { ClaudeHookEvent } from './claude-hook-event.model.js';
+import {
+  determineClaudeBridgeAction,
+  normalizeClaudeEvent,
+} from './claude-approval.js';
 import type { BridgeConnectBody, BridgeEventBody } from './claude.schemas.js';
+import {
+  createApprovalRequestFromClaudeEvent,
+  getApprovalRequestBridgeStatus,
+} from '../approval-requests/approval-request.service.js';
+import { deliverApprovalRequest } from '../delivery/delivery.service.js';
 
 const CLAUDE_ASSISTANT_TYPE = 'claude_code';
-
-type ClaudeBridgeAction = 'pass_through' | 'log_only' | 'remote_candidate';
-
-type NormalizedClaudeEvent = {
-  hookEventName: string;
-  toolName?: string;
-  sessionId?: string;
-  cwd?: string;
-  transcriptPath?: string;
-  projectPath?: string;
-  normalizedSummary?: string;
-  processingStatus: 'received' | 'normalized';
-};
 
 function getConnectionMetadata(connection: AssistantConnectionDocument): Partial<AssistantConnectionMetadata> {
   if (!connection.metadata || typeof connection.metadata !== 'object') {
@@ -60,68 +57,6 @@ function applyConnectionMetadata(
 
 function isClaudeConnectionStatus(status: string): status is AssistantConnectionStatus {
   return ['selected', 'pending_connection', 'connected', 'error', 'disconnected'].includes(status);
-}
-
-function extractString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
-}
-
-function getRecordValue(record: Record<string, unknown>, key: string): unknown {
-  return record[key];
-}
-
-function buildNormalizedSummary(hookEventName: string, toolName?: string): string | undefined {
-  if (toolName) {
-    return `${hookEventName}:${toolName}`;
-  }
-
-  return hookEventName !== 'unknown' ? hookEventName : undefined;
-}
-
-function normalizeClaudeEvent(rawPayload: BridgeEventBody): NormalizedClaudeEvent {
-  const payload = rawPayload as Record<string, unknown>;
-  const hookEventName =
-    extractString(getRecordValue(payload, 'hookEventName')) ??
-    extractString(getRecordValue(payload, 'eventName')) ??
-    extractString(getRecordValue(payload, 'hook_event_name')) ??
-    extractString(getRecordValue(payload, 'event')) ??
-    'unknown';
-  const toolName =
-    extractString(getRecordValue(payload, 'toolName')) ??
-    extractString(getRecordValue(payload, 'tool_name'));
-  const sessionId =
-    extractString(getRecordValue(payload, 'sessionId')) ??
-    extractString(getRecordValue(payload, 'session_id'));
-  const cwd = extractString(getRecordValue(payload, 'cwd'));
-  const projectPath =
-    extractString(getRecordValue(payload, 'projectPath')) ??
-    extractString(getRecordValue(payload, 'project_path'));
-  const transcriptPath =
-    extractString(getRecordValue(payload, 'transcriptPath')) ??
-    extractString(getRecordValue(payload, 'transcript_path'));
-  const normalizedSummary = buildNormalizedSummary(hookEventName, toolName);
-
-  return {
-    hookEventName,
-    toolName,
-    sessionId,
-    cwd,
-    projectPath,
-    transcriptPath,
-    normalizedSummary,
-    processingStatus: normalizedSummary ? 'normalized' : 'received',
-  };
-}
-
-function determineClaudeBridgeAction(
-  connection: AssistantConnectionDocument,
-  normalizedEvent: NormalizedClaudeEvent,
-): ClaudeBridgeAction {
-  if (!connection.awayModeEnabled) {
-    return normalizedEvent.hookEventName === 'PermissionRequest' ? 'log_only' : 'pass_through';
-  }
-
-  return normalizedEvent.hookEventName === 'PermissionRequest' ? 'remote_candidate' : 'log_only';
 }
 
 function ensureSupportedClaudeConnection(
@@ -217,6 +152,21 @@ function buildClaudeStatusResponse(connection: AssistantConnectionDocument | nul
     tokenPreview: connection?.connectionTokenPreview ?? null,
     connection: connection ? serializeAssistantConnection(connection) : null,
   };
+}
+
+async function markAssistantConnectedOnboarding(userId: AssistantConnectionDocument['userId']) {
+  const user = await User.findById(userId);
+
+  if (!user) {
+    return;
+  }
+
+  const nextOnboardingStatus = advanceOnboardingStatus(user.onboardingStatus, 'assistant_connected');
+
+  if (user.onboardingStatus !== nextOnboardingStatus) {
+    user.onboardingStatus = nextOnboardingStatus;
+    await user.save();
+  }
 }
 
 export async function findClaudeConnectionForUser(
@@ -326,6 +276,7 @@ export async function handleClaudeBridgeConnect(
     lastError: undefined,
   });
   await connection.save();
+  await markAssistantConnectedOnboarding(connection.userId);
 
   return {
     success: true,
@@ -342,9 +293,9 @@ export async function ingestClaudeBridgeEvent(
 ) {
   const now = new Date();
   const normalizedEvent = normalizeClaudeEvent(body);
-  const action = determineClaudeBridgeAction(connection, normalizedEvent);
+  const action = determineClaudeBridgeAction(connection.awayModeEnabled, normalizedEvent);
 
-  await ClaudeHookEvent.create({
+  const sourceEvent = await ClaudeHookEvent.create({
     assistantConnectionId: connection._id,
     userId: connection.userId,
     hookEventName: normalizedEvent.hookEventName,
@@ -364,15 +315,68 @@ export async function ingestClaudeBridgeEvent(
   applyConnectionMetadata(connection, {
     lastPingAt: now,
     lastSeenProjectPath: normalizedEvent.projectPath ?? normalizedEvent.cwd,
-    lastError: body.error,
+    lastError: typeof body.error === 'string' ? body.error : undefined,
   });
   await connection.save();
+  await markAssistantConnectedOnboarding(connection.userId);
+
+  let approvalId: string | null = null;
+
+  if (normalizedEvent.approvalCandidate && connection.awayModeEnabled) {
+    const approvalResult = await createApprovalRequestFromClaudeEvent({
+      assistantConnection: connection,
+      sourceEvent,
+      candidate: normalizedEvent.approvalCandidate,
+    });
+
+    approvalId = approvalResult.approval.id;
+
+    if (approvalResult.created) {
+      void deliverApprovalRequest(approvalResult.approvalRequest).catch((error) => {
+        logger.error(
+          {
+            err: error,
+            approvalRequestId: approvalResult.approval.id,
+            assistantConnectionId: String(connection._id),
+          },
+          'Approval delivery failed after Claude event ingest',
+        );
+      });
+    }
+  } else if (normalizedEvent.approvalCandidate) {
+    logger.info(
+      {
+        assistantConnectionId: String(connection._id),
+        sourceEventId: String(sourceEvent._id),
+        hookEventName: normalizedEvent.hookEventName,
+      },
+      'Skipped approval creation because away mode is off',
+    );
+  } else {
+    logger.info(
+      {
+        assistantConnectionId: String(connection._id),
+        sourceEventId: String(sourceEvent._id),
+        hookEventName: normalizedEvent.hookEventName,
+      },
+      'Skipped approval creation because Claude event is not approval-relevant',
+    );
+  }
 
   return {
+    ok: true,
     mode: connection.awayModeEnabled ? 'away' : 'local',
     awayModeEnabled: connection.awayModeEnabled,
     action,
+    approvalId,
   };
+}
+
+export async function getClaudeBridgeApprovalStatus(
+  connection: AssistantConnectionDocument,
+  approvalId: string,
+) {
+  return getApprovalRequestBridgeStatus(connection, approvalId);
 }
 
 export function serializeClaudeConnection(

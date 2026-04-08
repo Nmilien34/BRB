@@ -2,8 +2,9 @@ import type { AssistantType } from '../assistants/assistant.constants.js';
 
 export const onboardingStatuses = [
   'started',
-  'mobile_verified',
+  'profile_created',
   'assistant_selected',
+  'assistant_connected',
   'active',
 ] as const;
 
@@ -11,9 +12,10 @@ export type OnboardingStatus = (typeof onboardingStatuses)[number];
 
 export const onboardingStatusRank: Record<OnboardingStatus, number> = {
   started: 0,
-  mobile_verified: 1,
+  profile_created: 1,
   assistant_selected: 2,
-  active: 3,
+  assistant_connected: 3,
+  active: 4,
 };
 
 export function advanceOnboardingStatus(
@@ -27,7 +29,10 @@ export function advanceOnboardingStatus(
 
 export interface PublicUser {
   id: string;
-  phoneE164: string;
+  name: string | null;
+  email: string | null;
+  emailVerified: boolean;
+  phoneE164: string | null;
   onboardingStatus: OnboardingStatus;
   selectedAssistantType: AssistantType | null;
   createdAt: Date;

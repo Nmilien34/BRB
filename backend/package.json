@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "telegram:webhook:set": "tsx scripts/telegram-webhook.ts set",
+    "telegram:webhook:delete": "tsx scripts/telegram-webhook.ts delete",
+    "telegram:me": "tsx scripts/telegram-webhook.ts me"
   },
   "dependencies": {
     "@types/jsonwebtoken": "^9.0.10",

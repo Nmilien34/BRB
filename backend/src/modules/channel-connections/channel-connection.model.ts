@@ -11,9 +11,9 @@ const channelConnectionSchema = new Schema(
       type: String,
       enum: channelConnectionStatuses,
       default: 'pending',
-      required: true,
+        required: true,
     },
-    identifier: { type: String, required: true },
+    identifier: { type: String, required: false },
     label: { type: String, required: false },
     metadata: { type: Schema.Types.Mixed, default: () => ({}) },
     lastConnectedAt: { type: Date, default: null },
@@ -21,7 +21,17 @@ const channelConnectionSchema = new Schema(
   { timestamps: true },
 );
 
-channelConnectionSchema.index({ userId: 1, type: 1, identifier: 1 }, { unique: true });
+channelConnectionSchema.index({ userId: 1, type: 1 }, { unique: true });
+channelConnectionSchema.index(
+  { type: 1, identifier: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      identifier: { $type: 'string' },
+    },
+  },
+);
+channelConnectionSchema.index({ 'metadata.connectTokenHash': 1 }, { sparse: true });
 
 export type ChannelConnectionType = (typeof channelConnectionTypes)[number];
 export type ChannelConnectionStatus = (typeof channelConnectionStatuses)[number];

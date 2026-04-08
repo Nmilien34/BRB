@@ -11,7 +11,10 @@ export function serializeUser(user: UserDocument): PublicUser {
 
   return {
     id: timestampedUser.id,
-    phoneE164: timestampedUser.phoneE164,
+    name: timestampedUser.name ?? null,
+    email: timestampedUser.email ?? null,
+    emailVerified: timestampedUser.emailVerified ?? false,
+    phoneE164: timestampedUser.phoneE164 ?? null,
     onboardingStatus: timestampedUser.onboardingStatus,
     selectedAssistantType: timestampedUser.selectedAssistantType ?? null,
     createdAt: timestampedUser.createdAt,

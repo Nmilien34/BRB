@@ -1,13 +1,8 @@
 import { z } from 'zod';
 
-export const requestCodeBodySchema = z.object({
-  phone: z.string().trim().min(1).max(32),
+export const startAuthBodySchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  email: z.string().trim().toLowerCase().email().max(255),
 });
 
-export const verifyCodeBodySchema = z.object({
-  phone: z.string().trim().min(1).max(32),
-  code: z.string().trim().regex(/^\d{6}$/),
-});
-
-export type RequestCodeBody = z.infer<typeof requestCodeBodySchema>;
-export type VerifyCodeBody = z.infer<typeof verifyCodeBodySchema>;
+export type StartAuthBody = z.infer<typeof startAuthBodySchema>;

@@ -1,9 +1,10 @@
 import type { RequestHandler } from 'express';
 import { requireAuthenticatedUser } from '../../middleware/auth.js';
 import { requireAssistantConnection } from './require-claude-bridge-auth.js';
-import type { BridgeConnectBody, BridgeEventBody } from './claude.schemas.js';
+import type { BridgeApprovalParams, BridgeConnectBody, BridgeEventBody } from './claude.schemas.js';
 import {
   getClaudeAwayModeStatus,
+  getClaudeBridgeApprovalStatus,
   getClaudeSetup,
   getClaudeStatus,
   handleClaudeBridgeConnect,
@@ -64,6 +65,14 @@ export const connectClaudeBridge: RequestHandler = async (req, res) => {
 export const ingestClaudeBridgeHookEvent: RequestHandler = async (req, res) => {
   const connection = requireAssistantConnection(req);
   const result = await ingestClaudeBridgeEvent(connection, req.body as BridgeEventBody);
+
+  res.json(result);
+};
+
+export const getClaudeBridgeApproval: RequestHandler = async (req, res) => {
+  const connection = requireAssistantConnection(req);
+  const { approvalId } = req.params as BridgeApprovalParams;
+  const result = await getClaudeBridgeApprovalStatus(connection, approvalId);
 
   res.json(result);
 };

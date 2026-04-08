@@ -4,7 +4,31 @@ import { onboardingStatuses } from './user.constants.js';
 
 const userSchema = new Schema(
   {
-    phoneE164: { type: String, required: true, unique: true, index: true },
+    name: {
+      type: String,
+      required: function (this: { phoneE164?: string | null }) {
+        return !this.phoneE164;
+      },
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: function (this: { phoneE164?: string | null }) {
+        return !this.phoneE164;
+      },
+      trim: true,
+      lowercase: true,
+    },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
+    phoneE164: {
+      type: String,
+      required: false,
+      trim: true,
+    },
     onboardingStatus: {
       type: String,
       enum: onboardingStatuses,
@@ -19,6 +43,9 @@ const userSchema = new Schema(
   },
   { timestamps: true },
 );
+
+userSchema.index({ email: 1 }, { unique: true, sparse: true });
+userSchema.index({ phoneE164: 1 }, { unique: true, sparse: true });
 
 export type IUser = InferSchemaType<typeof userSchema>;
 export type UserDocument = HydratedDocument<IUser>;

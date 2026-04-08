@@ -28,5 +28,10 @@ export const bridgeEventBodySchema = z
   })
   .passthrough();
 
+export const bridgeApprovalParamsSchema = z.object({
+  approvalId: z.string().trim().regex(/^[0-9a-fA-F]{24}$/),
+});
+
 export type BridgeConnectBody = z.infer<typeof bridgeConnectBodySchema>;
 export type BridgeEventBody = z.infer<typeof bridgeEventBodySchema>;
+export type BridgeApprovalParams = z.infer<typeof bridgeApprovalParamsSchema>;

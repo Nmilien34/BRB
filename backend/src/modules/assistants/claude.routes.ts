@@ -6,12 +6,17 @@ import {
   disableClaudeAwayMode,
   enableClaudeAwayMode,
   getClaudeAwayMode,
+  getClaudeBridgeApproval,
   getClaudeConnectionStatus,
   getClaudeSetupPayload,
   ingestClaudeBridgeHookEvent,
   selectClaudeConnection,
 } from './claude.controller.js';
-import { bridgeConnectBodySchema, bridgeEventBodySchema } from './claude.schemas.js';
+import {
+  bridgeApprovalParamsSchema,
+  bridgeConnectBodySchema,
+  bridgeEventBodySchema,
+} from './claude.schemas.js';
 import { requireClaudeBridgeAuth } from './require-claude-bridge-auth.js';
 
 const router = Router();
@@ -25,5 +30,11 @@ router.get('/away-mode/status', requireAuth, getClaudeAwayMode);
 
 router.post('/bridge/connect', requireClaudeBridgeAuth, validate({ body: bridgeConnectBodySchema }), connectClaudeBridge);
 router.post('/bridge/events', requireClaudeBridgeAuth, validate({ body: bridgeEventBodySchema }), ingestClaudeBridgeHookEvent);
+router.get(
+  '/bridge/approval/:approvalId',
+  requireClaudeBridgeAuth,
+  validate({ params: bridgeApprovalParamsSchema }),
+  getClaudeBridgeApproval,
+);
 
 export default router;
