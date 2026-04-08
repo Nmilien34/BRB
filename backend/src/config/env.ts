@@ -13,6 +13,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(1),
   FRONTEND_URL: z.string().default('http://localhost:5173'),
   BACKEND_URL: z.string().optional(),
+  // Public backend base URL used for provider callbacks and webhook registration.
   APP_BASE_URL: z.string().url(),
   TELEGRAM_BOT_TOKEN: z.string().min(1),
   TELEGRAM_BOT_USERNAME: z.string().min(1),
