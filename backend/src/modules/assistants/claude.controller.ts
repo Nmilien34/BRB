@@ -12,6 +12,7 @@ import type {
 } from './claude.schemas.js';
 import {
   claimClaudeBridgeInstruction,
+  generateInstallScript,
   getClaudeAwayModeStatus,
   getClaudeBridgeApprovalStatus,
   getClaudeSetup,
@@ -125,4 +126,27 @@ export const postClaudeBridgeInstructionResult: RequestHandler = async (req, res
   );
 
   res.json({ instruction: result });
+};
+
+export const getInstallScript: RequestHandler = async (req, res) => {
+  const { token } = req.params;
+
+  if (!token || typeof token !== 'string' || token.length < 10) {
+    return res.status(400).send('# Error: Invalid token\nexit 1\n');
+  }
+
+  const forwardedProto = req.get('x-forwarded-proto');
+  const forwardedHost = req.get('x-forwarded-host');
+  const host = forwardedHost ?? req.get('host');
+  const protocol = forwardedProto ?? req.protocol ?? 'https';
+  const baseUrl = host ? `${protocol}://${host}` : 'https://be-right-back.onrender.com';
+
+  const result = await generateInstallScript(token, baseUrl);
+
+  if (!result) {
+    return res.status(404).send('# Error: Token not found or expired. Get a new one from BRB.\nexit 1\n');
+  }
+
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.send(result.script);
 };

@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "command": "BRB_CONNECTION_TOKEN=\"01ngTxddelhgRoJqOS2Gqh695yA0MWsNhblp-nIZT1c\" BRB_CONNECT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/:instructionId/result\" node ./brb-claude-bridge.js"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "command": "BRB_CONNECTION_TOKEN=\"01ngTxddelhgRoJqOS2Gqh695yA0MWsNhblp-nIZT1c\" BRB_CONNECT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/:instructionId/result\" node ./brb-claude-bridge.js"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "command": "BRB_CONNECTION_TOKEN=\"01ngTxddelhgRoJqOS2Gqh695yA0MWsNhblp-nIZT1c\" BRB_CONNECT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/:instructionId/result\" node ./brb-claude-bridge.js"
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "command": "BRB_CONNECTION_TOKEN=\"01ngTxddelhgRoJqOS2Gqh695yA0MWsNhblp-nIZT1c\" BRB_CONNECT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/:instructionId/result\" node ./brb-claude-bridge.js"
+      }
+    ]
+  }
+}

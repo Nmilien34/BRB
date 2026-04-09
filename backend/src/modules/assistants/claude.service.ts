@@ -9,7 +9,8 @@ import {
   type AssistantConnectionDocument,
   AssistantConnection,
 } from './assistant-connection.model.js';
-import { generateAssistantConnectionToken } from './assistant-token.js';
+import { generateAssistantConnectionToken, hashAssistantConnectionToken } from './assistant-token.js';
+import { BRIDGE_SCRIPT, POLLER_SCRIPT } from './claude-install-scripts.js';
 import {
   type AssistantConnectionMetadata,
   type AssistantConnectionStatus,
@@ -482,3 +483,181 @@ export function serializeClaudeConnection(
 ): PublicAssistantConnection {
   return serializeAssistantConnection(connection);
 }
+
+export async function generateInstallScript(
+  connectionToken: string,
+  baseUrl: string,
+): Promise<{ script: string; connection: AssistantConnectionDocument } | null> {
+  const connection = await AssistantConnection.findOne({
+    assistantType: CLAUDE_ASSISTANT_TYPE,
+    connectionTokenHash: hashAssistantConnectionToken(connectionToken),
+  });
+
+  if (!connection) {
+    return null;
+  }
+
+  const connectUrl = `${baseUrl}/api/assistants/claude/bridge/connect`;
+  const eventsUrl = `${baseUrl}/api/assistants/claude/bridge/events`;
+  const instructionsUrl = `${baseUrl}/api/assistants/claude/bridge/instructions/next`;
+  const instructionResultUrl = `${baseUrl}/api/assistants/claude/bridge/instructions/:instructionId/result`;
+
+  const script = buildInstallShellScript({
+    connectionToken,
+    connectUrl,
+    eventsUrl,
+    instructionsUrl,
+    instructionResultUrl,
+  });
+
+  return { script, connection };
+}
+
+function buildInstallShellScript(config: {
+  connectionToken: string;
+  connectUrl: string;
+  eventsUrl: string;
+  instructionsUrl: string;
+  instructionResultUrl: string;
+}): string {
+  const bridgeCommand =
+    `BRB_CONNECTION_TOKEN="${config.connectionToken}" ` +
+    `BRB_CONNECT_URL="${config.connectUrl}" ` +
+    `BRB_EVENTS_URL="${config.eventsUrl}" ` +
+    `BRB_INSTRUCTIONS_URL="${config.instructionsUrl}" ` +
+    `BRB_INSTRUCTION_RESULT_URL="${config.instructionResultUrl}" ` +
+    'node .brb/brb-claude-bridge.js';
+
+  const hooksJson = JSON.stringify(
+    {
+      hooks: {
+        PermissionRequest: [{ matcher: '*', command: bridgeCommand }],
+        PreToolUse: [{ matcher: '*', command: bridgeCommand }],
+        PostToolUse: [{ matcher: '*', command: bridgeCommand }],
+        Stop: [{ matcher: '*', command: bridgeCommand }],
+      },
+    },
+    null,
+    2,
+  );
+
+  return `#!/bin/bash
+set -euo pipefail
+
+echo ""
+echo "  ┌─────────────────────────────────┐"
+echo "  │  BRB — Claude Code Setup        │"
+echo "  └─────────────────────────────────┘"
+echo ""
+
+# Create .brb directory
+mkdir -p .brb
+
+# Write bridge script (hook handler for approval forwarding)
+cat > .brb/brb-claude-bridge.js << 'BRIDGE_EOF'
+${BRIDGE_SCRIPT}
+BRIDGE_EOF
+
+# Write poller script (persistent background process)
+cat > .brb/brb-claude-poller.js << 'POLLER_EOF'
+${POLLER_SCRIPT}
+POLLER_EOF
+
+chmod +x .brb/brb-claude-bridge.js .brb/brb-claude-poller.js
+
+# Write Claude hooks config
+mkdir -p .claude
+cat > .claude/settings.json << 'HOOKS_EOF'
+${hooksJson}
+HOOKS_EOF
+
+# Write env config for the poller
+cat > .brb/.env << ENV_EOF
+BRB_CONNECTION_TOKEN="${config.connectionToken}"
+BRB_CONNECT_URL="${config.connectUrl}"
+BRB_EVENTS_URL="${config.eventsUrl}"
+BRB_INSTRUCTIONS_URL="${config.instructionsUrl}"
+BRB_INSTRUCTION_RESULT_URL="${config.instructionResultUrl}"
+ENV_EOF
+
+# Write start/stop scripts
+cat > .brb/start.sh << 'START_EOF'
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")"
+if [ -f poller.pid ]; then
+  OLD_PID=$(cat poller.pid)
+  if kill -0 "$OLD_PID" 2>/dev/null; then
+    echo "BRB poller already running (PID $OLD_PID)"
+    exit 0
+  fi
+  rm -f poller.pid
+fi
+set -a; source .env; set +a
+nohup node brb-claude-poller.js >> poller.log 2>&1 &
+echo $! > poller.pid
+echo "BRB poller started (PID $!)"
+START_EOF
+
+cat > .brb/stop.sh << 'STOP_EOF'
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")"
+if [ ! -f poller.pid ]; then
+  echo "BRB poller not running."
+  exit 0
+fi
+PID=$(cat poller.pid)
+if kill -0 "$PID" 2>/dev/null; then
+  kill "$PID"
+  echo "BRB poller stopped (PID $PID)"
+else
+  echo "BRB poller not running (stale PID)."
+fi
+rm -f poller.pid
+STOP_EOF
+
+chmod +x .brb/start.sh .brb/stop.sh
+
+# Add .brb to .gitignore if not already there
+if [ -f .gitignore ]; then
+  grep -qxF '.brb/' .gitignore || echo '.brb/' >> .gitignore
+else
+  echo '.brb/' > .gitignore
+fi
+
+# Send initial connect ping
+echo "Connecting to BRB..."
+CONNECT_RESULT=$(curl -s -w "\\n%{http_code}" -X POST "${config.connectUrl}" \\
+  -H "Authorization: Bearer ${config.connectionToken}" \\
+  -H "Content-Type: application/json" \\
+  -d "{\\"cwd\\": \\"$(pwd)\\", \\"machineName\\": \\"$(hostname)\\"}" 2>/dev/null)
+HTTP_CODE=$(echo "$CONNECT_RESULT" | tail -1)
+
+if [ "$HTTP_CODE" = "200" ]; then
+  echo "  Connected!"
+else
+  echo "  Warning: Connect ping returned $HTTP_CODE (may need a fresh token)"
+fi
+
+# Start the poller
+.brb/start.sh
+
+echo ""
+echo "  BRB is set up!"
+echo ""
+echo "  What happened:"
+echo "    - .brb/           Scripts + config (gitignored)"
+echo "    - .claude/settings.json   Claude hooks for approval forwarding"
+echo "    - Background poller running for Telegram instructions"
+echo ""
+echo "  Commands:"
+echo "    .brb/start.sh     Start the poller"
+echo "    .brb/stop.sh      Stop the poller"
+echo "    tail -f .brb/poller.log   Watch poller activity"
+echo ""
+echo "  Next: restart Claude Code in this project so hooks load."
+echo ""
+`;
+}
+

@@ -14,6 +14,7 @@ import {
   patchClaudeSettings,
   postClaudeBridgeInstructionResult,
   resolveClaudeBridgeApproval,
+  getInstallScript,
   selectClaudeConnection,
 } from './claude.controller.js';
 import {
@@ -28,6 +29,9 @@ import {
 import { requireClaudeBridgeAuth } from './require-claude-bridge-auth.js';
 
 const router = Router();
+
+// Public install endpoint — auth via token in URL
+router.get('/install/:token', getInstallScript);
 
 router.post('/select', requireAuth, selectClaudeConnection);
 router.get('/setup', requireAuth, getClaudeSetupPayload);
