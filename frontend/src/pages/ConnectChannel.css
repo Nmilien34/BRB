@@ -1,0 +1,255 @@
+.connect-channel {
+  min-height: 100vh;
+  height: 100vh;
+  background-color: #fafbfc;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Nav */
+.connect-channel-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 80px;
+  flex-shrink: 0;
+}
+
+.connect-channel-nav-logo,
+.connect-channel-nav-logo:hover {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1f36;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.connect-channel-nav-step {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+
+/* Progress bar */
+.connect-channel-progress-track {
+  position: absolute;
+  top: 72px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: #e8edf2;
+}
+
+.connect-channel-progress-bar {
+  width: 100%;
+  height: 3px;
+  background-color: #3b82f6;
+}
+
+/* Content */
+.connect-channel-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 0 80px;
+}
+
+.connect-channel-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 440px;
+  width: 100%;
+  gap: 32px;
+}
+
+/* Header */
+.connect-channel-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.connect-channel-icon {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.connect-channel-title {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: #1a1f36;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.connect-channel-subtitle {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #64748b;
+  line-height: 1.55;
+  text-align: center;
+}
+
+/* CTA */
+.connect-channel-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 20px;
+}
+
+.connect-channel-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 50px;
+  padding: 16px 48px;
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.01em;
+  line-height: 18px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    transform 0.15s,
+    box-shadow 0.2s,
+    opacity 0.2s;
+}
+
+.connect-channel-button:hover {
+  transform: translateY(-1px);
+}
+
+/* Platform-specific button colors */
+.connect-channel-button.telegram {
+  background-color: #2aabee;
+}
+
+.connect-channel-button.telegram:hover {
+  box-shadow: 0 8px 24px -4px rgba(42, 171, 238, 0.35);
+}
+
+.connect-channel-button.whatsapp {
+  background-color: #25d366;
+}
+
+.connect-channel-button.whatsapp:hover {
+  box-shadow: 0 8px 24px -4px rgba(37, 211, 102, 0.35);
+}
+
+.connect-channel-button.discord {
+  background-color: #5865f2;
+}
+
+.connect-channel-button.discord:hover {
+  box-shadow: 0 8px 24px -4px rgba(88, 101, 242, 0.35);
+}
+
+/* Status indicator */
+.connect-channel-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.connect-channel-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.connect-channel-status-dot.waiting {
+  background-color: #f59e0b;
+}
+
+.connect-channel-status-dot.connected {
+  background-color: #22c55e;
+}
+
+.connect-channel-status-dot.error {
+  background-color: #ef4444;
+}
+
+.connect-channel-status-text {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #94a3b8;
+  line-height: 16px;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .connect-channel-nav {
+    padding: 16px 24px;
+  }
+
+  .connect-channel-nav-logo,
+  .connect-channel-nav-logo:hover {
+    font-size: 18px;
+  }
+
+  .connect-channel-nav-step {
+    font-size: 12px;
+  }
+
+  .connect-channel-progress-track {
+    top: 54px;
+  }
+
+  .connect-channel-content {
+    padding: 0 24px;
+  }
+
+  .connect-channel-card {
+    max-width: 100%;
+    gap: 28px;
+  }
+
+  .connect-channel-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .connect-channel-title {
+    font-size: 26px;
+    line-height: 1.2;
+  }
+
+  .connect-channel-subtitle {
+    font-size: 14px;
+  }
+
+  .connect-channel-cta {
+    gap: 16px;
+  }
+
+  .connect-channel-button {
+    width: 100%;
+    padding: 16px;
+  }
+
+  .connect-channel-status-text {
+    font-size: 12px;
+  }
+}

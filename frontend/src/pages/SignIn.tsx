@@ -1,4 +1,6 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../lib/auth';
 import './SignIn.css';
 
 function ConnectIcon() {
@@ -10,11 +12,10 @@ function ConnectIcon() {
   );
 }
 
-function PhoneIcon() {
+function ChannelIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <rect x="4" y="1.5" width="6" height="11" rx="1.2" stroke="#3B82F6" strokeWidth="1.2" />
-      <line x1="6" y1="10.5" x2="8" y2="10.5" stroke="#3B82F6" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M2 3.5C2 2.67 2.67 2 3.5 2H10.5C11.33 2 12 2.67 12 3.5V8.5C12 9.33 11.33 10 10.5 10H5L2 12.5V3.5Z" stroke="#3B82F6" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -48,6 +49,29 @@ function WaveSvg() {
 }
 
 export default function SignIn() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim() || !email.trim()) return;
+    setError(null);
+    setSubmitting(true);
+
+    try {
+      await login(name.trim(), email.trim());
+      navigate('/assistants');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div className="welcome">
       {/* Nav */}
@@ -55,7 +79,7 @@ export default function SignIn() {
         <Link to="/" className="welcome-nav-logo">
           BRB
         </Link>
-        <span className="welcome-nav-step">Step 1 of 3</span>
+        <span className="welcome-nav-step">Step 1 of 5</span>
       </nav>
 
       {/* Progress bar */}
@@ -70,7 +94,7 @@ export default function SignIn() {
           <div className="welcome-header">
             <h1 className="welcome-title">Set up in under a minute.</h1>
             <p className="welcome-subtitle">
-              Three quick steps and your assistant stays connected — even when you walk away.
+              A few quick steps and your assistant stays connected — even when you walk away.
             </p>
           </div>
 
@@ -84,9 +108,9 @@ export default function SignIn() {
             </div>
             <div className="welcome-step">
               <div className="welcome-step-icon">
-                <PhoneIcon />
+                <ChannelIcon />
               </div>
-              <span className="welcome-step-text">Add your mobile</span>
+              <span className="welcome-step-text">Connect your channel</span>
             </div>
             <div className="welcome-step">
               <div className="welcome-step-icon">
@@ -96,13 +120,34 @@ export default function SignIn() {
             </div>
           </div>
 
-          {/* CTA */}
-          <div className="welcome-cta">
-            <Link to="/assistants" className="welcome-button">
-              Begin Setup
-            </Link>
+          {/* Auth form + CTA */}
+          <form className="welcome-cta" onSubmit={handleSubmit}>
+            <input
+              type="text"
+              className="welcome-input"
+              placeholder="Your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+            <input
+              type="email"
+              className="welcome-input"
+              placeholder="Email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            {error && <span className="welcome-error">{error}</span>}
+            <button
+              type="submit"
+              className="welcome-button"
+              disabled={submitting || !name.trim() || !email.trim()}
+            >
+              {submitting ? 'Setting up…' : 'Begin Setup'}
+            </button>
             <span className="welcome-cta-hint">Takes less than 60 seconds</span>
-          </div>
+          </form>
         </div>
       </div>
 

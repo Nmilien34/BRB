@@ -4,7 +4,7 @@ const navItems = [
   { to: '/', label: 'Home' },
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/assistants', label: 'Assistants' },
-  { to: '/phone', label: 'Phone Setup' },
+  { to: '/channel', label: 'Channel' },
   { to: '/approvals', label: 'Approvals' },
   { to: '/settings', label: 'Settings' },
 ];

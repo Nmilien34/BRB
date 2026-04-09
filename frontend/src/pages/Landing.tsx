@@ -10,11 +10,10 @@ function LinkIcon() {
   );
 }
 
-function PhoneIcon() {
+function ChannelIcon() {
   return (
     <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-      <rect x="8" y="3" width="12" height="22" rx="3" stroke="#94A3B8" strokeWidth="1.5" fill="none" />
-      <line x1="12" y1="21" x2="16" y2="21" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M4 7a3 3 0 013-3h14a3 3 0 013 3v10a3 3 0 01-3 3h-6l-5 4v-4H7a3 3 0 01-3-3V7z" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </svg>
   );
 }
@@ -118,10 +117,10 @@ export default function Landing() {
             </p>
           </div>
           <div className="landing-step">
-            <PhoneIcon />
-            <p className="landing-step-title">Add your phone</p>
+            <ChannelIcon />
+            <p className="landing-step-title">Connect your channel</p>
             <p className="landing-step-desc">
-              Verify your number. Get approval requests and alerts via SMS.
+              Choose Telegram, WhatsApp, or Discord to get approval requests and alerts.
             </p>
           </div>
           <div className="landing-step">

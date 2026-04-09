@@ -46,7 +46,7 @@
 }
 
 .welcome-progress-bar {
-  width: 33.33%;
+  width: 20%;
   height: 3px;
   background-color: #3b82f6;
   border-top-right-radius: 3px;
@@ -139,6 +139,44 @@
   align-items: center;
   width: 100%;
   gap: 16px;
+}
+
+.welcome-input {
+  width: 100%;
+  max-width: 320px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background-color: #ffffff;
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #1a1f36;
+  line-height: 18px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.welcome-input::placeholder {
+  color: #94a3b8;
+}
+
+.welcome-input:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+}
+
+.welcome-error {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #ef4444;
+  line-height: 18px;
+}
+
+.welcome-button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .welcome-button {

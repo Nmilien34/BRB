@@ -4,7 +4,10 @@ import Landing from './pages/Landing';
 import SignIn from './pages/SignIn';
 import Dashboard from './pages/Dashboard';
 import AssistantConnection from './pages/AssistantConnection';
-import PhoneSetup from './pages/PhoneSetup';
+import InstallAssistant from './pages/InstallAssistant';
+import ChannelSelect from './pages/ChannelSelect';
+import ConnectChannel from './pages/ConnectChannel';
+import OnboardingSuccess from './pages/OnboardingSuccess';
 import Approvals from './pages/Approvals';
 import Settings from './pages/Settings';
 import Paywall from './pages/Paywall';
@@ -15,7 +18,10 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/signin" element={<SignIn />} />
-        <Route path="/phone" element={<PhoneSetup />} />
+        <Route path="/install" element={<InstallAssistant />} />
+        <Route path="/channel" element={<ChannelSelect />} />
+        <Route path="/connect/:platform" element={<ConnectChannel />} />
+        <Route path="/success" element={<OnboardingSuccess />} />
         <Route path="/assistants" element={<AssistantConnection />} />
         <Route path="/paywall" element={<Paywall />} />
         <Route element={<Layout />}>

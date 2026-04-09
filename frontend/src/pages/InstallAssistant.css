@@ -1,0 +1,339 @@
+.install-assistant {
+  min-height: 100vh;
+  height: 100vh;
+  background-color: #fafbfc;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Nav */
+.install-assistant-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 80px;
+  flex-shrink: 0;
+}
+
+.install-assistant-nav-logo,
+.install-assistant-nav-logo:hover {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1f36;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.install-assistant-nav-step {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+
+/* Progress bar */
+.install-assistant-progress-track {
+  position: absolute;
+  top: 72px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: #e8edf2;
+}
+
+.install-assistant-progress-bar {
+  width: 60%;
+  height: 3px;
+  background-color: #3b82f6;
+  border-top-right-radius: 3px;
+  border-bottom-right-radius: 3px;
+}
+
+/* Content */
+.install-assistant-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 0 80px;
+}
+
+.install-assistant-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 520px;
+  width: 100%;
+  gap: 32px;
+}
+
+/* Header */
+.install-assistant-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.install-assistant-title {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: #1a1f36;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.install-assistant-subtitle {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #64748b;
+  line-height: 1.55;
+  text-align: center;
+}
+
+/* Command block */
+.install-assistant-command {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background-color: #1a1f36;
+  border-radius: 12px;
+  padding: 18px 20px;
+  gap: 12px;
+}
+
+.install-assistant-prompt {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 20px;
+  flex-shrink: 0;
+}
+
+.install-assistant-cmd {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  color: #e2e8f0;
+  line-height: 20px;
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.install-assistant-copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 6px 12px;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+  line-height: 16px;
+  transition: background-color 0.15s;
+}
+
+.install-assistant-copy:hover {
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.install-assistant-copy.copied {
+  color: #4ade80;
+  background-color: rgba(74, 222, 128, 0.12);
+}
+
+/* Helper text */
+.install-assistant-helper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.install-assistant-helper-text {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #94a3b8;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* CTA */
+.install-assistant-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 14px;
+}
+
+.install-assistant-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50px;
+  padding: 16px 48px;
+  background: linear-gradient(180deg, #4d8ef8 0%, #3566d4 50%, #2a51b8 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 8px 24px -4px rgba(59, 130, 246, 0.3),
+    0 2px 6px rgba(59, 130, 246, 0.15);
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.01em;
+  line-height: 18px;
+  border: none;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    box-shadow 0.2s,
+    opacity 0.2s;
+}
+
+.install-assistant-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 12px 28px -4px rgba(59, 130, 246, 0.35),
+    0 4px 8px rgba(59, 130, 246, 0.2);
+}
+
+.install-assistant-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Checking state */
+.install-assistant-button.checking {
+  opacity: 0.8;
+  cursor: wait;
+}
+
+.install-assistant-status {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  text-align: center;
+}
+
+.install-assistant-status.error {
+  color: #ef4444;
+}
+
+.install-assistant-status.success {
+  color: #22c55e;
+}
+
+/* Decorative elements */
+.install-assistant-shark-ghost {
+  position: absolute;
+  bottom: 55px;
+  left: 65px;
+  opacity: 0.04;
+  pointer-events: none;
+}
+
+.install-assistant-whale-ghost {
+  position: absolute;
+  bottom: 45px;
+  right: 65px;
+  opacity: 0.06;
+  pointer-events: none;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .install-assistant-nav {
+    padding: 16px 24px;
+  }
+
+  .install-assistant-nav-logo,
+  .install-assistant-nav-logo:hover {
+    font-size: 18px;
+  }
+
+  .install-assistant-nav-step {
+    font-size: 12px;
+  }
+
+  .install-assistant-progress-track {
+    top: 54px;
+  }
+
+  .install-assistant-content {
+    padding: 0 24px;
+  }
+
+  .install-assistant-card {
+    max-width: 100%;
+    gap: 24px;
+  }
+
+  .install-assistant-header {
+    gap: 8px;
+  }
+
+  .install-assistant-title {
+    font-size: 26px;
+    line-height: 1.2;
+  }
+
+  .install-assistant-subtitle {
+    font-size: 14px;
+  }
+
+  .install-assistant-command {
+    border-radius: 10px;
+    padding: 14px 16px;
+    gap: 10px;
+  }
+
+  .install-assistant-prompt {
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .install-assistant-cmd {
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  .install-assistant-copy {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  .install-assistant-helper-text {
+    font-size: 12px;
+  }
+
+  .install-assistant-button {
+    width: 100%;
+    padding: 16px;
+  }
+
+  .install-assistant-shark-ghost,
+  .install-assistant-whale-ghost {
+    display: none;
+  }
+}

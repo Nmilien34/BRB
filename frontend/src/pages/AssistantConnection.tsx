@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../lib/auth';
 import './AssistantConnection.css';
 
 const assistants = [
@@ -11,11 +12,25 @@ const assistants = [
 
 export default function AssistantConnection() {
   const [selected, setSelected] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { authFetch } = useAuth();
 
-  function handleContinue() {
-    if (selected) {
-      navigate('/phone');
+  async function handleContinue() {
+    if (!selected || submitting) return;
+    setSubmitting(true);
+    try {
+      await authFetch('/api/assistants/claude/select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assistantType: selected }),
+      });
+      navigate('/install');
+    } catch {
+      // Navigate anyway — selection is best-effort
+      navigate('/install');
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -26,7 +41,7 @@ export default function AssistantConnection() {
         <Link to="/" className="select-assistant-nav-logo">
           BRB
         </Link>
-        <span className="select-assistant-nav-step">Step 2 of 3</span>
+        <span className="select-assistant-nav-step">Step 2 of 5</span>
       </nav>
 
       {/* Progress bar */}

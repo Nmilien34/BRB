@@ -1,4 +1,4 @@
-.phone-setup {
+.channel-select {
   min-height: 100vh;
   height: 100vh;
   background-color: #fafbfc;
@@ -9,7 +9,7 @@
 }
 
 /* Nav */
-.phone-setup-nav {
+.channel-select-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -17,8 +17,8 @@
   flex-shrink: 0;
 }
 
-.phone-setup-nav-logo,
-.phone-setup-nav-logo:hover {
+.channel-select-nav-logo,
+.channel-select-nav-logo:hover {
   font-family: 'Geist', system-ui, sans-serif;
   font-size: 20px;
   font-weight: 700;
@@ -27,7 +27,7 @@
   text-decoration: none;
 }
 
-.phone-setup-nav-step {
+.channel-select-nav-step {
   font-family: 'Geist', system-ui, sans-serif;
   font-size: 13px;
   font-weight: 500;
@@ -36,7 +36,7 @@
 }
 
 /* Progress bar */
-.phone-setup-progress-track {
+.channel-select-progress-track {
   position: absolute;
   top: 72px;
   left: 0;
@@ -45,14 +45,16 @@
   background-color: #e8edf2;
 }
 
-.phone-setup-progress-bar {
-  width: 100%;
+.channel-select-progress-bar {
+  width: 80%;
   height: 3px;
   background-color: #3b82f6;
+  border-top-right-radius: 3px;
+  border-bottom-right-radius: 3px;
 }
 
 /* Content */
-.phone-setup-content {
+.channel-select-content {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -61,24 +63,24 @@
   padding: 0 80px;
 }
 
-.phone-setup-card {
+.channel-select-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  max-width: 440px;
+  max-width: 560px;
   width: 100%;
   gap: 36px;
 }
 
 /* Header */
-.phone-setup-header {
+.channel-select-header {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
 }
 
-.phone-setup-title {
+.channel-select-title {
   font-family: 'Geist', system-ui, sans-serif;
   font-size: 32px;
   font-weight: 700;
@@ -88,7 +90,7 @@
   text-align: center;
 }
 
-.phone-setup-subtitle {
+.channel-select-subtitle {
   font-family: 'Geist', system-ui, sans-serif;
   font-size: 15px;
   font-weight: 400;
@@ -97,32 +99,52 @@
   text-align: center;
 }
 
-/* Phone input */
-.phone-setup-input-row {
+/* Channel Grid */
+.channel-select-grid {
   display: flex;
   width: 100%;
-  gap: 10px;
+  gap: 16px;
 }
 
-.phone-setup-country-code {
+.channel-select-option {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  flex-shrink: 0;
-  border-radius: 12px;
-  padding: 14px 16px;
-  gap: 6px;
+  flex: 1;
+  border-radius: 14px;
+  padding: 28px 16px;
+  gap: 12px;
   background-color: #ffffff;
   border: 1.5px solid #e2e8f0;
   cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s,
+    box-shadow 0.15s;
 }
 
-.phone-setup-flag {
-  font-family: 'Geist', system-ui, sans-serif;
-  font-size: 15px;
-  line-height: 18px;
+.channel-select-option:hover:not(:disabled) {
+  border-color: #cbd5e1;
 }
 
-.phone-setup-code {
+.channel-select-option.selected {
+  background-color: #f0f7ff;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+}
+
+.channel-select-option.coming-soon {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.channel-select-option img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.channel-select-option-name {
   font-family: 'Geist', system-ui, sans-serif;
   font-size: 15px;
   font-weight: 500;
@@ -130,33 +152,16 @@
   line-height: 18px;
 }
 
-.phone-setup-number {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  border-radius: 12px;
-  padding: 14px 18px;
-  background-color: #ffffff;
-  border: 1.5px solid #e2e8f0;
+.channel-select-coming-soon {
   font-family: 'Geist', system-ui, sans-serif;
-  font-size: 15px;
-  font-weight: 400;
-  color: #1a1f36;
-  line-height: 18px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.phone-setup-number::placeholder {
+  font-size: 11px;
+  font-weight: 500;
   color: #94a3b8;
-}
-
-.phone-setup-number:focus {
-  border-color: #3b82f6;
+  letter-spacing: 0.02em;
 }
 
 /* CTA */
-.phone-setup-cta {
+.channel-select-cta {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -164,13 +169,12 @@
   gap: 14px;
 }
 
-.phone-setup-button {
+.channel-select-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
   border-radius: 50px;
-  padding: 16px;
+  padding: 16px 48px;
   background: linear-gradient(180deg, #4d8ef8 0%, #3566d4 50%, #2a51b8 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
@@ -182,15 +186,15 @@
   color: #ffffff;
   letter-spacing: 0.01em;
   line-height: 18px;
-  text-decoration: none;
   border: none;
   cursor: pointer;
   transition:
     transform 0.15s,
-    box-shadow 0.2s;
+    box-shadow 0.2s,
+    opacity 0.2s;
 }
 
-.phone-setup-button:hover {
+.channel-select-button:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
@@ -198,17 +202,13 @@
     0 4px 8px rgba(59, 130, 246, 0.2);
 }
 
-.phone-setup-cta-hint {
-  font-family: 'Geist', system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  color: #94a3b8;
-  line-height: 16px;
-  text-align: center;
+.channel-select-button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* Decorative elements */
-.phone-setup-shark-ghost {
+.channel-select-shark-ghost {
   position: absolute;
   bottom: 55px;
   left: 65px;
@@ -216,10 +216,79 @@
   pointer-events: none;
 }
 
-.phone-setup-whale-ghost {
+.channel-select-whale-ghost {
   position: absolute;
   bottom: 45px;
   right: 65px;
   opacity: 0.06;
   pointer-events: none;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .channel-select-nav {
+    padding: 16px 24px;
+  }
+
+  .channel-select-nav-logo,
+  .channel-select-nav-logo:hover {
+    font-size: 18px;
+  }
+
+  .channel-select-nav-step {
+    font-size: 12px;
+  }
+
+  .channel-select-progress-track {
+    top: 54px;
+  }
+
+  .channel-select-content {
+    padding: 0 24px;
+  }
+
+  .channel-select-card {
+    max-width: 100%;
+    gap: 28px;
+  }
+
+  .channel-select-header {
+    gap: 8px;
+  }
+
+  .channel-select-title {
+    font-size: 26px;
+  }
+
+  .channel-select-subtitle {
+    font-size: 14px;
+  }
+
+  .channel-select-grid {
+    gap: 12px;
+  }
+
+  .channel-select-option {
+    padding: 20px 12px;
+    gap: 10px;
+    border-radius: 12px;
+  }
+
+  .channel-select-option img {
+    width: 36px;
+    height: 36px;
+  }
+
+  .channel-select-option-name {
+    font-size: 13px;
+  }
+
+  .channel-select-button {
+    width: 100%;
+  }
+
+  .channel-select-shark-ghost,
+  .channel-select-whale-ghost {
+    display: none;
+  }
 }
