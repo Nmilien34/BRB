@@ -28,12 +28,17 @@ export default function InstallAssistant() {
         if (!res.ok) throw new Error('Failed to fetch setup info');
         const data = await res.json();
         if (!cancelled && data.connectionToken) {
-          setInstallUrl(`curl -sL brb.dev/install/${data.connectionToken} | bash`);
+          // Use the backend's own base URL for the install script
+          const installBase = data.bridgeConnectUrl
+            ? new URL(data.bridgeConnectUrl).origin
+            : window.location.origin;
+          setInstallUrl(
+            `curl -sL ${installBase}/api/assistants/claude/install/${data.connectionToken} | bash`,
+          );
         }
-      } catch {
-        // Fallback — show placeholder until backend is wired
+      } catch (err) {
         if (!cancelled) {
-          setInstallUrl('curl -sL brb.dev/install/abc123 | bash');
+          setError(err instanceof Error ? err.message : 'Failed to load install command. Please sign in first.');
         }
       }
     }

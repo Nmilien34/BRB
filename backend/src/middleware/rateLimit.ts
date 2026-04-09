@@ -15,6 +15,16 @@ interface RateLimitOptions {
 
 const requestBuckets = new Map<string, RateLimitBucket>();
 
+// Periodically clean up expired buckets to prevent memory leak
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of requestBuckets) {
+    if (bucket.resetAt <= now) {
+      requestBuckets.delete(key);
+    }
+  }
+}, 60_000);
+
 export function createIpRateLimit({
   key,
   maxRequests,

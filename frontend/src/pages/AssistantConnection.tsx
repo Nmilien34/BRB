@@ -13,22 +13,24 @@ const assistants = [
 export default function AssistantConnection() {
   const [selected, setSelected] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { authFetch } = useAuth();
 
   async function handleContinue() {
     if (!selected || submitting) return;
     setSubmitting(true);
+    setError(null);
     try {
-      await authFetch('/api/assistants/claude/select', {
+      const res = await authFetch('/api/assistants/claude/select', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ assistantType: selected }),
       });
+      if (!res.ok) throw new Error('Failed to save selection');
       navigate('/install');
-    } catch {
-      // Navigate anyway — selection is best-effort
-      navigate('/install');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -80,11 +82,12 @@ export default function AssistantConnection() {
             <button
               type="button"
               className="select-assistant-button"
-              disabled={!selected}
+              disabled={!selected || submitting}
               onClick={handleContinue}
             >
-              Continue
+              {submitting ? 'Saving…' : 'Continue'}
             </button>
+            {error && <span className="select-assistant-error">{error}</span>}
           </div>
         </div>
       </div>

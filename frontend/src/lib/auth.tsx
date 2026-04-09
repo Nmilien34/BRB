@@ -27,14 +27,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(!!localStorage.getItem(TOKEN_KEY));
 
-  // Authenticated fetch wrapper
+  // Authenticated fetch wrapper — auto-logout on 401
   const authFetch = useCallback(
     async (url: string, opts: RequestInit = {}) => {
       const headers = new Headers(opts.headers);
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);
       }
-      return fetch(url, { ...opts, headers });
+      const res = await fetch(url, { ...opts, headers });
+      if (res.status === 401) {
+        localStorage.removeItem(TOKEN_KEY);
+        setToken(null);
+        setUser(null);
+        window.location.href = '/signin';
+      }
+      return res;
     },
     [token],
   );

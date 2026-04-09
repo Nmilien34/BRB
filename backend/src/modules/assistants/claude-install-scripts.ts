@@ -56,9 +56,10 @@ async function pollApprovalDecision(approvalId) {
       if (result.status === 'approved') return { decision: 'allow' };
       if (result.status === 'denied') return { decision: 'deny', reason: result.resolutionNote || 'Denied via Telegram' };
       if (result.status === 'responded') return { decision: 'allow' };
-    } catch {}
+    } catch (err) { process.stderr.write('BRB bridge: approval poll error: ' + (err.message || err) + '\\n'); }
     await new Promise((r) => setTimeout(r, APPROVAL_POLL_INTERVAL_MS));
   }
+  process.stderr.write('BRB bridge: approval poll timed out after ' + (APPROVAL_POLL_TIMEOUT_MS / 1000) + 's — allowing by default\\n');
   return { decision: 'allow' };
 }
 

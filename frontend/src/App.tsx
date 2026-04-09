@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
 import Landing from './pages/Landing';
 import SignIn from './pages/SignIn';
 import Dashboard from './pages/Dashboard';
@@ -16,18 +17,27 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public routes */}
         <Route path="/" element={<Landing />} />
         <Route path="/signin" element={<SignIn />} />
-        <Route path="/install" element={<InstallAssistant />} />
-        <Route path="/channel" element={<ChannelSelect />} />
-        <Route path="/connect/:platform" element={<ConnectChannel />} />
-        <Route path="/success" element={<OnboardingSuccess />} />
-        <Route path="/assistants" element={<AssistantConnection />} />
-        <Route path="/paywall" element={<Paywall />} />
-        <Route element={<Layout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/approvals" element={<Approvals />} />
-          <Route path="/settings" element={<Settings />} />
+
+        {/* Protected: onboarding */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/assistants" element={<AssistantConnection />} />
+          <Route path="/install" element={<InstallAssistant />} />
+          <Route path="/channel" element={<ChannelSelect />} />
+          <Route path="/connect/:platform" element={<ConnectChannel />} />
+          <Route path="/success" element={<OnboardingSuccess />} />
+          <Route path="/paywall" element={<Paywall />} />
+        </Route>
+
+        {/* Protected: dashboard */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<Layout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/approvals" element={<Approvals />} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

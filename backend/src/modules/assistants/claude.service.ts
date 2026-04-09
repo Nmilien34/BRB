@@ -550,8 +550,13 @@ echo "  │  BRB — Claude Code Setup        │"
 echo "  └─────────────────────────────────┘"
 echo ""
 
-# Create .brb directory
+# Check prerequisites
+command -v node >/dev/null 2>&1 || { echo "  Error: Node.js is required but not installed."; exit 1; }
+command -v curl >/dev/null 2>&1 || { echo "  Error: curl is required but not installed."; exit 1; }
+
+# Create .brb directory with restricted permissions
 mkdir -p .brb
+chmod 700 .brb
 
 # Write bridge script (hook handler for approval forwarding)
 cat > .brb/brb-claude-bridge.js << 'BRIDGE_EOF'
@@ -565,13 +570,37 @@ POLLER_EOF
 
 chmod +x .brb/brb-claude-bridge.js .brb/brb-claude-poller.js
 
-# Write Claude hooks config
+# Write/merge Claude hooks config
 mkdir -p .claude
-cat > .claude/settings.json << 'HOOKS_EOF'
+cat > .brb/_brb_hooks.json << 'HOOKS_JSON_EOF'
 ${hooksJson}
-HOOKS_EOF
+HOOKS_JSON_EOF
 
-# Write env config for the poller
+if [ -f .claude/settings.json ]; then
+  # Merge BRB hooks into existing settings (preserves user's other config)
+  node --input-type=commonjs << 'MERGE_EOF'
+var fs = require("fs");
+var brb = JSON.parse(fs.readFileSync(".brb/_brb_hooks.json", "utf8"));
+var settingsPath = ".claude/settings.json";
+var existing = {};
+try { existing = JSON.parse(fs.readFileSync(settingsPath, "utf8")); } catch(e) {}
+var hooks = existing.hooks || {};
+Object.keys(brb.hooks || {}).forEach(function(key) {
+  var arr = hooks[key] || [];
+  arr = arr.filter(function(h) { return (h.command || "").indexOf("brb-claude-bridge") === -1; });
+  arr = arr.concat(brb.hooks[key]);
+  hooks[key] = arr;
+});
+existing.hooks = hooks;
+fs.writeFileSync(settingsPath, JSON.stringify(existing, null, 2) + "\\n");
+MERGE_EOF
+  echo "  Merged BRB hooks into existing .claude/settings.json"
+else
+  cp .brb/_brb_hooks.json .claude/settings.json
+fi
+rm -f .brb/_brb_hooks.json
+
+# Write env config for the poller (restricted permissions)
 cat > .brb/.env << ENV_EOF
 BRB_CONNECTION_TOKEN="${config.connectionToken}"
 BRB_CONNECT_URL="${config.connectUrl}"
@@ -579,6 +608,7 @@ BRB_EVENTS_URL="${config.eventsUrl}"
 BRB_INSTRUCTIONS_URL="${config.instructionsUrl}"
 BRB_INSTRUCTION_RESULT_URL="${config.instructionResultUrl}"
 ENV_EOF
+chmod 600 .brb/.env
 
 # Write start/stop scripts
 cat > .brb/start.sh << 'START_EOF'

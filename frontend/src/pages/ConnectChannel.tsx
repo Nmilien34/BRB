@@ -101,10 +101,10 @@ export default function ConnectChannel() {
         if (!cancelled && data.deepLink) {
           setDeepLink(data.deepLink);
         }
-      } catch {
-        // Fallback deep link for dev/demo
-        if (!cancelled && platform === 'telegram') {
-          setDeepLink('https://t.me/BRBNotifyBot?start=demo');
+      } catch (err) {
+        if (!cancelled) {
+          setStatus('error');
+          setErrorMsg(err instanceof Error ? err.message : 'Failed to start channel link. Please try again.');
         }
       }
     }
