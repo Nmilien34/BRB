@@ -13,7 +13,7 @@ interface AuthContextValue {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (name: string, email: string) => Promise<void>;
+  login: (name: string, email: string) => Promise<User>;
   logout: () => void;
   authFetch: (url: string, opts?: RequestInit) => Promise<Response>;
 }
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, [token]);
 
-  const login = useCallback(async (name: string, email: string) => {
+  const login = useCallback(async (name: string, email: string): Promise<User> => {
     const res = await fetch('/api/auth/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -95,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(TOKEN_KEY, data.token);
     setToken(data.token);
     setUser(data.user);
+    return data.user;
   }, []);
 
   const logout = useCallback(() => {

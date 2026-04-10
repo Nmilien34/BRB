@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import './SignIn.css';
@@ -48,13 +48,29 @@ function WaveSvg() {
   );
 }
 
+function getResumeRoute(onboardingStatus: string): string {
+  switch (onboardingStatus) {
+    case 'active': return '/dashboard';
+    case 'assistant_connected': return '/channel';
+    case 'assistant_selected': return '/install';
+    default: return '/assistants';
+  }
+}
+
 export default function SignIn() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user, token, loading } = useAuth();
+
+  // If already logged in, redirect based on onboarding status
+  useEffect(() => {
+    if (!loading && token && user) {
+      navigate(getResumeRoute(user.onboardingStatus), { replace: true });
+    }
+  }, [loading, token, user, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -63,8 +79,8 @@ export default function SignIn() {
     setSubmitting(true);
 
     try {
-      await login(name.trim(), email.trim());
-      navigate('/assistants');
+      const loggedInUser = await login(name.trim(), email.trim());
+      navigate(getResumeRoute(loggedInUser.onboardingStatus));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {

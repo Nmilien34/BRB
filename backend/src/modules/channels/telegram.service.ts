@@ -44,6 +44,8 @@ interface TelegramStartResponse {
   botUsername: string;
   status: string;
   expiresAt: Date;
+  alreadyConnected?: boolean;
+  username?: string;
 }
 
 interface TelegramApprovalReply {
@@ -286,6 +288,19 @@ async function sendTelegramMessageBestEffort(chatId: string, text: string): Prom
 export async function startTelegramConnection(user: UserDocument): Promise<TelegramStartResponse> {
   let connection = await findTelegramConnectionForUser(user);
 
+  // If already connected, return existing connection info without resetting it
+  if (connection?.status === 'connected' && connection.identifier) {
+    const meta = getTelegramMetadata(connection);
+    return {
+      deepLink: buildTelegramDeepLink('already-connected'),
+      botUsername: telegramConfig.botUsername,
+      status: connection.status,
+      expiresAt: new Date(Date.now() + CONNECT_TOKEN_EXPIRY_MS),
+      alreadyConnected: true,
+      username: meta.username ?? undefined,
+    };
+  }
+
   if (!connection) {
     connection = new ChannelConnection({
       userId: user._id,
@@ -481,6 +496,10 @@ async function handleApprovalReply(update: TelegramWebhookUpdate): Promise<void>
 
   if (!channelConnection) {
     logger.info({ updateId: update.update_id, chatId }, 'Unknown Telegram message received');
+    await sendTelegramMessageBestEffort(
+      chatId,
+      "This Telegram account isn't linked to BRB yet.\nOpen the BRB app and go through the Telegram connect step to link it.",
+    );
     return;
   }
 
@@ -632,6 +651,10 @@ async function handleTelegramClaudeInstruction(update: TelegramWebhookUpdate): P
 
   if (!channelConnection) {
     logger.info({ updateId: update.update_id, chatId }, 'Unknown Telegram Claude instruction received');
+    await sendTelegramMessageBestEffort(
+      chatId,
+      "This Telegram account isn't linked to BRB yet.\nOpen the BRB app and go through the Telegram connect step to link it.",
+    );
     return true;
   }
 
@@ -695,7 +718,7 @@ export async function handleTelegramWebhookUpdate(update: TelegramWebhookUpdate)
     if (message.chat) {
       await sendTelegramMessageBestEffort(
         String(message.chat.id),
-        'Open the BRB app and start a new Telegram connect flow to link this account.',
+        "Welcome to BRB! To link this Telegram account, open the BRB app and go through the Telegram connect step — you'll get a special link to tap here.",
       );
     }
 
@@ -706,7 +729,28 @@ export async function handleTelegramWebhookUpdate(update: TelegramWebhookUpdate)
     return;
   }
 
-  await handleApprovalReply(update);
+  // Check if this looks like an approval-related command before routing there
+  const text = message.text.trim();
+  const normalizedText = text.toLowerCase();
+  const isApprovalCommand =
+    normalizedText === 'list' ||
+    normalizedText === 'why' ||
+    normalizedText === 'details' ||
+    /^(approve|deny|yes|no|y|n)\b/i.test(text) ||
+    /^\d+/.test(text);
+
+  if (isApprovalCommand) {
+    await handleApprovalReply(update);
+    return;
+  }
+
+  // Unrecognized message — send help
+  if (message.chat) {
+    await sendTelegramMessageBestEffort(
+      String(message.chat.id),
+      'To send Claude an instruction, start your message with "Claude".\nExample: Claude, check my last few commits\n\nTo manage approvals, reply "list" to see pending requests.',
+    );
+  }
 }
 
 export function isValidTelegramWebhookSecret(secret: string, headerSecret?: string): boolean {
