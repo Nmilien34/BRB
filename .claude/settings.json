@@ -3,25 +3,25 @@
     "PermissionRequest": [
       {
         "matcher": "*",
-        "command": "BRB_CONNECTION_TOKEN=\"iji0TSorP32-luNPb5RjIEYQCLg8GMEAS4NTNBbFzwo\" BRB_CONNECT_URL=\"http://localhost:3001/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"http://localhost:3001/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
+        "command": "BRB_CONNECTION_TOKEN=\"N4h6zeLMaDOfOYnLIrgMAXUMeCRbslnOUdutj1_nIlc\" BRB_CONNECT_URL=\"http://localhost:3001/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"http://localhost:3001/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
       }
     ],
     "PreToolUse": [
       {
         "matcher": "*",
-        "command": "BRB_CONNECTION_TOKEN=\"iji0TSorP32-luNPb5RjIEYQCLg8GMEAS4NTNBbFzwo\" BRB_CONNECT_URL=\"http://localhost:3001/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"http://localhost:3001/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
+        "command": "BRB_CONNECTION_TOKEN=\"N4h6zeLMaDOfOYnLIrgMAXUMeCRbslnOUdutj1_nIlc\" BRB_CONNECT_URL=\"http://localhost:3001/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"http://localhost:3001/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
       }
     ],
     "PostToolUse": [
       {
         "matcher": "*",
-        "command": "BRB_CONNECTION_TOKEN=\"iji0TSorP32-luNPb5RjIEYQCLg8GMEAS4NTNBbFzwo\" BRB_CONNECT_URL=\"http://localhost:3001/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"http://localhost:3001/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
+        "command": "BRB_CONNECTION_TOKEN=\"N4h6zeLMaDOfOYnLIrgMAXUMeCRbslnOUdutj1_nIlc\" BRB_CONNECT_URL=\"http://localhost:3001/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"http://localhost:3001/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
       }
     ],
     "Stop": [
       {
         "matcher": "*",
-        "command": "BRB_CONNECTION_TOKEN=\"iji0TSorP32-luNPb5RjIEYQCLg8GMEAS4NTNBbFzwo\" BRB_CONNECT_URL=\"http://localhost:3001/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"http://localhost:3001/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
+        "command": "BRB_CONNECTION_TOKEN=\"N4h6zeLMaDOfOYnLIrgMAXUMeCRbslnOUdutj1_nIlc\" BRB_CONNECT_URL=\"http://localhost:3001/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"http://localhost:3001/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"http://localhost:3001/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
       }
     ]
   }

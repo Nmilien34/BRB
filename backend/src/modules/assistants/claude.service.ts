@@ -266,9 +266,10 @@ export async function getClaudeSetup(user: UserDocument, req: Request) {
   await selectClaudeConnectionForUser(user);
   const connection = ensureSupportedClaudeConnection(await findClaudeConnectionForUser(user));
 
-  // If already connected with a valid token, return the setup payload
-  // without rotating the token (which would kill the active poller)
-  if (connection.status === 'connected' && connection.connectionTokenHash) {
+  // If already connected with a valid token AND the poller is still alive,
+  // return the setup payload without rotating the token (which would kill the active poller).
+  // When the connection is stale (poller died), allow token regeneration.
+  if (connection.status === 'connected' && connection.connectionTokenHash && !isConnectionStale(connection)) {
     return buildClaudeSetupPayload(connection, null, getPublicBaseUrl(req));
   }
 
