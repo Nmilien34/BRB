@@ -43,6 +43,7 @@ import {
 
 const CLAUDE_ASSISTANT_TYPE = 'claude_code';
 const DEFAULT_ESCALATION_DELAY_MINUTES = 2;
+const CONNECTION_STALE_THRESHOLD_MS = 90_000; // 3× the 30s ping interval
 
 function getConnectionMetadata(connection: AssistantConnectionDocument): Partial<AssistantConnectionMetadata> {
   if (!connection.metadata || typeof connection.metadata !== 'object') {
@@ -67,6 +68,16 @@ function applyConnectionMetadata(
   }
 
   connection.metadata = metadata;
+}
+
+function isConnectionStale(connection: AssistantConnectionDocument): boolean {
+  if (connection.status !== 'connected') return false;
+  const metadata = getConnectionMetadata(connection);
+  if (!metadata.lastPingAt) return false;
+  const lastPingAt = metadata.lastPingAt instanceof Date
+    ? metadata.lastPingAt
+    : new Date(metadata.lastPingAt as string | number);
+  return Date.now() - lastPingAt.getTime() > CONNECTION_STALE_THRESHOLD_MS;
 }
 
 function isClaudeConnectionStatus(status: string): status is AssistantConnectionStatus {
@@ -179,9 +190,13 @@ function buildClaudeSetupPayload(
 }
 
 function buildClaudeStatusResponse(connection: AssistantConnectionDocument | null) {
+  const effectiveStatus = connection && isConnectionStale(connection)
+    ? 'disconnected'
+    : connection?.status ?? 'disconnected';
+
   return {
     assistantType: CLAUDE_ASSISTANT_TYPE,
-    status: connection?.status ?? 'disconnected',
+    status: effectiveStatus,
     awayModeEnabled: connection?.awayModeEnabled ?? false,
     awayModeActivatedAt: connection?.awayModeActivatedAt ?? null,
     escalationDelayMinutes: connection?.escalationDelayMinutes ?? DEFAULT_ESCALATION_DELAY_MINUTES,

@@ -53,6 +53,7 @@ export default function Dashboard() {
   const [assistantStatus, setAssistantStatus] = useState<string>('loading');
   const [channelStatus, setChannelStatus] = useState<string>('loading');
   const [copied, setCopied] = useState(false);
+  const [activeProjectPath, setActiveProjectPath] = useState<string | null>(null);
 
   // Telegram link state
   const [telegramDeepLink, setTelegramDeepLink] = useState<string | null>(null);
@@ -87,6 +88,8 @@ export default function Dashboard() {
           setAssistantStatus(status);
           if (status === 'connected') {
             setInstallUrl('connected');
+            const projectPath = data.connection?.metadata?.lastSeenProjectPath ?? null;
+            setActiveProjectPath(projectPath);
           }
         } else {
           setAssistantStatus('disconnected');
@@ -265,9 +268,16 @@ export default function Dashboard() {
           <p className="dashboard-connection-label">Claude Code</p>
           {installUrl === 'connected' ? (
             <div className="dashboard-command">
-              <span className="dashboard-command-text" style={{ color: '#4ade80' }}>
-                Connected and running.
-              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span className="dashboard-command-text" style={{ color: '#4ade80' }}>
+                  Connected and running.
+                </span>
+                {activeProjectPath && (
+                  <span className="dashboard-command-text" style={{ color: '#64748b', fontSize: '12px' }}>
+                    {activeProjectPath.split('/').pop() || activeProjectPath}
+                  </span>
+                )}
+              </div>
             </div>
           ) : installUrl ? (
             <div className="dashboard-command">
@@ -373,7 +383,12 @@ export default function Dashboard() {
                 {instructions.map((inst) => (
                   <div key={inst.id} className="dashboard-instruction">
                     <div className="dashboard-instruction-header">
-                      <span className="dashboard-instruction-prompt">{inst.prompt}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span className="dashboard-instruction-prompt">{inst.prompt}</span>
+                        {inst.bridgeSessionLabel && (
+                          <span className="dashboard-instruction-session">{inst.bridgeSessionLabel}</span>
+                        )}
+                      </div>
                       <div className="dashboard-instruction-meta">
                         <span className={`dashboard-instruction-badge ${inst.status}`}>
                           {inst.status}

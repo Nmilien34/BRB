@@ -292,18 +292,18 @@
 
 .dashboard-instruction-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 6px;
 }
 
 .dashboard-instruction-prompt {
+  display: block;
   font-family: 'Geist', system-ui, sans-serif;
   font-size: 14px;
   font-weight: 600;
   color: #1a1f36;
-  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -339,6 +339,14 @@
 .dashboard-instruction-badge.dispatched {
   color: #d97706;
   background: #fffbeb;
+}
+
+.dashboard-instruction-session {
+  display: block;
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
 }
 
 .dashboard-instruction-time {

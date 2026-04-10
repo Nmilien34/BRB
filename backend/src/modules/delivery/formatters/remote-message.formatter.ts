@@ -21,9 +21,21 @@ function getSessionLabel(remoteInstruction: RemoteInstructionDocument): string |
 
 export function formatTelegramRemoteInstructionQueuedMessage(
   remoteInstruction: RemoteInstructionDocument,
+  queuePosition: number = 0,
+  projectName: string | null = null,
 ): string {
   const sessionLabel = getSessionLabel(remoteInstruction);
   const lines = ['🤖 BRB — Sent To Claude', ''];
+
+  if (queuePosition > 0) {
+    lines.push(`Queued — ${queuePosition} instruction${queuePosition === 1 ? '' : 's'} ahead`);
+    lines.push('');
+  }
+
+  if (projectName) {
+    lines.push(`Project: ${projectName}`);
+    lines.push('');
+  }
 
   if (sessionLabel) {
     lines.push(`Session: ${sessionLabel}`);

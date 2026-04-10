@@ -16,7 +16,8 @@ import {
 } from '../delivery/formatters/remote-message.formatter.js';
 
 const CLAUDE_ASSISTANT_TYPE = 'claude_code';
-const REMOTE_INSTRUCTION_DISPATCH_TIMEOUT_MS = 2 * 60 * 1000;
+const REMOTE_INSTRUCTION_DISPATCH_TIMEOUT_MS = 20 * 60 * 1000; // must exceed poller's CLAUDE_EXECUTION_TIMEOUT_MS (15 min)
+const CONNECTION_STALE_THRESHOLD_MS = 90_000; // 3× the 30s ping interval — must match claude.service.ts
 
 interface QueueTelegramInstructionInput {
   userId: AssistantConnectionDocument['userId'];
@@ -36,11 +37,25 @@ interface ReportRemoteInstructionResultInput {
 async function findConnectedClaudeConnectionForUser(
   userId: AssistantConnectionDocument['userId'],
 ): Promise<AssistantConnectionDocument | null> {
-  return AssistantConnection.findOne({
+  const connection = await AssistantConnection.findOne({
     userId,
     assistantType: CLAUDE_ASSISTANT_TYPE,
     status: 'connected',
   });
+
+  if (!connection) return null;
+
+  // Check if the connection is stale (poller hasn't pinged recently)
+  const metadata = connection.metadata as Record<string, unknown> | null;
+  const lastPingAt = metadata?.lastPingAt;
+  if (lastPingAt) {
+    const pingTime = lastPingAt instanceof Date ? lastPingAt : new Date(lastPingAt as string | number);
+    if (Date.now() - pingTime.getTime() > CONNECTION_STALE_THRESHOLD_MS) {
+      return null; // poller is likely dead
+    }
+  }
+
+  return connection;
 }
 
 async function findConnectedTelegramChatId(
@@ -108,7 +123,14 @@ export async function queueTelegramInstructionForClaude({
     throw new HttpError(409, 'Claude is not connected right now.');
   }
 
-  const latestSessionContext = await getLatestClaudeSessionContext(assistantConnection.id);
+  const [latestSessionContext, pendingCount] = await Promise.all([
+    getLatestClaudeSessionContext(assistantConnection.id),
+    RemoteInstruction.countDocuments({
+      assistantConnectionId: assistantConnection._id,
+      status: { $in: ['queued', 'dispatched'] },
+    }),
+  ]);
+
   const instruction = await RemoteInstruction.create({
     userId,
     assistantConnectionId: assistantConnection._id,
@@ -120,19 +142,26 @@ export async function queueTelegramInstructionForClaude({
     targetSessionLabel: latestSessionContext.sessionLabel,
   });
 
+  // Extract project name from connection metadata
+  const connectionMetadata = assistantConnection.metadata as Record<string, unknown> | null;
+  const lastSeenProjectPath = connectionMetadata?.lastSeenProjectPath as string | null;
+  const projectName = lastSeenProjectPath ? lastSeenProjectPath.split('/').pop() || null : null;
+
   logger.info(
     {
       remoteInstructionId: instruction.id,
       assistantConnectionId: String(assistantConnection._id),
       targetSessionId: latestSessionContext.sessionId,
       targetSessionLabel: latestSessionContext.sessionLabel,
+      queuePosition: pendingCount,
+      projectName,
     },
     'Queued Telegram remote instruction for Claude',
   );
 
   await sendTelegramMessageBestEffort(
     userId,
-    formatTelegramRemoteInstructionQueuedMessage(instruction),
+    formatTelegramRemoteInstructionQueuedMessage(instruction, pendingCount, projectName),
   );
 
   return {

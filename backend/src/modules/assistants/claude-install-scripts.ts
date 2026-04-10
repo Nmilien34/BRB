@@ -59,8 +59,8 @@ async function pollApprovalDecision(approvalId) {
     } catch (err) { process.stderr.write('BRB bridge: approval poll error: ' + (err.message || err) + '\\n'); }
     await new Promise((r) => setTimeout(r, APPROVAL_POLL_INTERVAL_MS));
   }
-  process.stderr.write('BRB bridge: approval poll timed out after ' + (APPROVAL_POLL_TIMEOUT_MS / 1000) + 's — allowing by default\\n');
-  return { decision: 'allow' };
+  process.stderr.write('BRB bridge: approval poll timed out after ' + (APPROVAL_POLL_TIMEOUT_MS / 1000) + 's — denying for safety\\n');
+  return { decision: 'deny', reason: 'Approval timed out — denied for safety' };
 }
 
 async function main() {
@@ -82,8 +82,11 @@ main().catch((err) => { process.stderr.write('BRB bridge error: ' + err.message 
 `;
 
 export const POLLER_SCRIPT = `#!/usr/bin/env node
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
 import { hostname } from 'node:os';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
 
 const BRB_CONNECTION_TOKEN = process.env.BRB_CONNECTION_TOKEN;
 const BRB_CONNECT_URL = process.env.BRB_CONNECT_URL;
@@ -92,12 +95,13 @@ const BRB_INSTRUCTION_RESULT_URL = process.env.BRB_INSTRUCTION_RESULT_URL;
 
 const CONNECT_PING_INTERVAL_MS = 30000;
 const INSTRUCTION_POLL_INTERVAL_MS = 5000;
-const CLAUDE_EXECUTION_TIMEOUT_MS = 5 * 60 * 1000;
+const CLAUDE_EXECUTION_TIMEOUT_MS = 15 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 15000;
 const MAX_REPLY_LENGTH = 3500;
 
 let running = true;
 let executingInstruction = false;
+let lastSessionId = null;
 
 function log(msg) { const ts = new Date().toISOString(); process.stderr.write('[' + ts + '] ' + msg + '\\n'); }
 
@@ -133,10 +137,31 @@ async function pollForInstruction() {
   } catch (err) { log('Poll error: ' + err.message); return null; }
 }
 
-function executeClaudeCLI(prompt) {
+function mapClaudeError(stderr, exitCode) {
+  const lower = stderr.toLowerCase();
+  if (lower.includes('anthropic_api_key') || lower.includes('api key') || lower.includes('authentication')) {
+    return 'Claude API key not set or invalid. Check ANTHROPIC_API_KEY in your environment.';
+  }
+  if (lower.includes('rate limit') || lower.includes('too many requests') || lower.includes('429')) {
+    return 'Claude API rate limit reached. Try again in a few minutes.';
+  }
+  if (lower.includes('command not found') || lower.includes('npx: not found') || exitCode === 127) {
+    return 'Claude CLI not installed. Run: npm install -g @anthropic-ai/claude-code';
+  }
+  if (!stderr.trim() && exitCode !== 0) {
+    return 'Claude exited unexpectedly (code ' + exitCode + ')';
+  }
+  return 'Claude error (code ' + exitCode + '): ' + stderr.slice(0, 200).trim();
+}
+
+function executeClaudeCLI(prompt, resumeSessionId) {
   return new Promise((resolve, reject) => {
     let stdout = ''; let stderr = ''; let killed = false;
-    const child = spawn('npx', ['@anthropic-ai/claude-code', '-p', prompt, '--output-format', 'text'], {
+    const args = ['@anthropic-ai/claude-code', '-p', prompt, '--output-format', 'json'];
+    if (resumeSessionId) {
+      args.push('--resume', resumeSessionId);
+    }
+    const child = spawn('npx', args, {
       cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env },
     });
     const timer = setTimeout(() => { killed = true; child.kill('SIGTERM'); setTimeout(() => child.kill('SIGKILL'), 5000); }, CLAUDE_EXECUTION_TIMEOUT_MS);
@@ -144,9 +169,14 @@ function executeClaudeCLI(prompt) {
     child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
     child.on('close', (code) => {
       clearTimeout(timer);
-      if (killed) reject(new Error('Claude execution timed out'));
-      else if (code !== 0) reject(new Error('Claude exited with code ' + code + ': ' + stderr.slice(0, 500)));
-      else resolve(stdout.trim());
+      if (killed) { reject(new Error('Claude execution timed out after ' + (CLAUDE_EXECUTION_TIMEOUT_MS / 60000) + ' minutes')); return; }
+      if (code !== 0) { reject(new Error(mapClaudeError(stderr, code))); return; }
+      try {
+        const parsed = JSON.parse(stdout.trim());
+        resolve({ text: parsed.result || parsed.text || stdout.trim(), sessionId: parsed.session_id || parsed.sessionId || null });
+      } catch {
+        resolve({ text: stdout.trim(), sessionId: null });
+      }
     });
     child.on('error', (err) => { clearTimeout(timer); reject(err); });
   });
@@ -154,12 +184,29 @@ function executeClaudeCLI(prompt) {
 
 function truncate(text, max) { return text.length <= max ? text : text.slice(0, max - 1) + '…'; }
 
-async function reportResult(instructionId, status, replyText, errorMessage) {
+async function getGitDiffSummary() {
+  try {
+    await execFileAsync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: process.cwd() });
+    const { stdout } = await execFileAsync('git', ['diff', '--stat', 'HEAD'], { cwd: process.cwd(), timeout: 10000 });
+    const stat = stdout.trim();
+    if (!stat) return null;
+    return stat;
+  } catch {
+    return null;
+  }
+}
+
+async function reportResult(instructionId, status, replyText, errorMessage, sessionId) {
   const resultUrl = BRB_INSTRUCTION_RESULT_URL.replace(':instructionId', instructionId);
   try {
     await fetchJSON(resultUrl, {
       method: 'POST', headers: authHeaders(),
-      body: JSON.stringify({ status, replyText: replyText ? truncate(replyText, MAX_REPLY_LENGTH) : undefined, errorMessage: errorMessage ? truncate(errorMessage, 1200) : undefined }),
+      body: JSON.stringify({
+        status,
+        replyText: replyText ? truncate(replyText, MAX_REPLY_LENGTH) : undefined,
+        errorMessage: errorMessage ? truncate(errorMessage, 1200) : undefined,
+        sessionId: sessionId || undefined,
+      }),
     });
     log('Reported ' + status + ' for instruction ' + instructionId);
   } catch (err) { log('Failed to report result: ' + err.message); }
@@ -168,14 +215,18 @@ async function reportResult(instructionId, status, replyText, errorMessage) {
 async function handleInstruction(instruction) {
   executingInstruction = true;
   const { id, prompt } = instruction;
-  log('Executing instruction ' + id + ': "' + prompt.slice(0, 80) + '..."');
+  log('Executing instruction ' + id + ' (resume: ' + (lastSessionId || 'none') + '): "' + prompt.slice(0, 80) + '..."');
   try {
-    const output = await executeClaudeCLI(prompt);
-    log('Claude completed — ' + output.length + ' chars');
-    await reportResult(id, 'completed', output, null);
+    const { text, sessionId } = await executeClaudeCLI(prompt, lastSessionId);
+    if (sessionId) { lastSessionId = sessionId; }
+    let replyText = text;
+    const diffSummary = await getGitDiffSummary();
+    if (diffSummary) { replyText = replyText + '\\n\\nFiles changed:\\n' + diffSummary; }
+    log('Claude completed — ' + replyText.length + ' chars, session: ' + (sessionId || 'none'));
+    await reportResult(id, 'completed', replyText, null, sessionId);
   } catch (err) {
     log('Claude failed: ' + err.message);
-    await reportResult(id, 'failed', null, err.message);
+    await reportResult(id, 'failed', null, err.message, null);
   } finally { executingInstruction = false; }
 }
 
