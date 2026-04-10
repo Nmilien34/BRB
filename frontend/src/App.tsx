@@ -31,10 +31,14 @@ export default function App() {
           <Route path="/paywall" element={<Paywall />} />
         </Route>
 
-        {/* Protected: dashboard */}
+        {/* Protected: dashboard (standalone, no sidebar) */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Route>
+
+        {/* Protected: other pages with sidebar */}
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/approvals" element={<Approvals />} />
             <Route path="/settings" element={<Settings />} />
           </Route>

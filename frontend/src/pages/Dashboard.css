@@ -1,0 +1,523 @@
+.dashboard {
+  min-height: 100vh;
+  background-color: #fafbfc;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Nav */
+.dashboard-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 80px;
+  flex-shrink: 0;
+}
+
+.dashboard-nav-logo,
+.dashboard-nav-logo:hover {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1f36;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.dashboard-nav-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.dashboard-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dashboard-status-dot.connected {
+  background-color: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+}
+
+.dashboard-status-dot.disconnected {
+  background-color: #ef4444;
+}
+
+.dashboard-status-dot.warning {
+  background-color: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+}
+
+/* Main content */
+.dashboard-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 80px 120px;
+  gap: 32px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Connection card */
+.dashboard-connection {
+  width: 100%;
+}
+
+.dashboard-connection-label {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.dashboard-command {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background-color: #1a1f36;
+  border-radius: 12px;
+  padding: 16px 18px;
+  gap: 12px;
+}
+
+.dashboard-command-prompt {
+  font-family: 'Geist Mono', 'SF Mono', monospace;
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 20px;
+  flex-shrink: 0;
+}
+
+.dashboard-command-text {
+  font-family: 'Geist Mono', 'SF Mono', monospace;
+  font-size: 13px;
+  color: #e2e8f0;
+  line-height: 20px;
+  flex-grow: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  padding: 5px 14px;
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.06em;
+  transition: background-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.dashboard-copy-btn:hover {
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.dashboard-copy-btn.copied {
+  color: #4ade80;
+  background-color: rgba(74, 222, 128, 0.12);
+}
+
+/* Channels section */
+.dashboard-channels {
+  width: 100%;
+}
+
+.dashboard-channels-label {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.dashboard-channels-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-channel-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 18px;
+  transition: border-color 0.15s;
+}
+
+.dashboard-channel-card.connected {
+  border-color: #a7f3d0;
+  background: #f0fdf4;
+}
+
+.dashboard-channel-card.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.dashboard-channel-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dashboard-channel-name {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1f36;
+}
+
+.dashboard-channel-card.disabled .dashboard-channel-name {
+  color: #94a3b8;
+}
+
+.dashboard-channel-status {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dashboard-channel-status.connected {
+  color: #059669;
+}
+
+.dashboard-channel-badge {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  background: #f1f5f9;
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+
+.dashboard-channel-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 16px;
+  background-color: #1a1f36;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  text-decoration: none;
+  transition: background-color 0.15s;
+}
+
+.dashboard-channel-link-btn:hover {
+  background-color: #2d3348;
+}
+
+.dashboard-channel-link-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dashboard-channel-link-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dashboard-channel-waiting {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 12px;
+  color: #94a3b8;
+  animation: pulse-text 2s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Instruction history */
+.dashboard-history {
+  width: 100%;
+}
+
+.dashboard-history-label {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.dashboard-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dashboard-instruction {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+.dashboard-instruction-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.dashboard-instruction-prompt {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1f36;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-instruction-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.dashboard-instruction-badge {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: capitalize;
+}
+
+.dashboard-instruction-badge.completed {
+  color: #059669;
+  background: #ecfdf5;
+}
+
+.dashboard-instruction-badge.failed {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.dashboard-instruction-badge.queued,
+.dashboard-instruction-badge.dispatched {
+  color: #d97706;
+  background: #fffbeb;
+}
+
+.dashboard-instruction-time {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.dashboard-instruction-reply {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 120px;
+  overflow: hidden;
+}
+
+.dashboard-instruction-error {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  color: #ef4444;
+  line-height: 1.5;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #fef2f2;
+}
+
+.dashboard-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: #94a3b8;
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.dashboard-load-more {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #3b82f6;
+  background: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 20px;
+  cursor: pointer;
+  margin-top: 8px;
+  align-self: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.dashboard-load-more:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.dashboard-loading {
+  text-align: center;
+  padding: 24px;
+  color: #94a3b8;
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 14px;
+}
+
+/* Profile bubble */
+.dashboard-profile-bubble {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 100;
+}
+
+.dashboard-profile-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #3b82f6;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.dashboard-profile-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+}
+
+.dashboard-profile-popover {
+  position: absolute;
+  bottom: 56px;
+  left: 0;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  min-width: 200px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  animation: popover-in 0.12s ease;
+}
+
+@keyframes popover-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dashboard-profile-name {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1f36;
+  margin-bottom: 2px;
+}
+
+.dashboard-profile-email {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 12px;
+  word-break: break-all;
+}
+
+.dashboard-logout-btn {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #ef4444;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.15s;
+}
+
+.dashboard-logout-btn:hover {
+  opacity: 0.7;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .dashboard-nav {
+    padding: 16px 24px;
+  }
+
+  .dashboard-content {
+    padding: 16px 24px 120px;
+    gap: 24px;
+  }
+
+  .dashboard-command {
+    border-radius: 10px;
+    padding: 14px 16px;
+    gap: 10px;
+  }
+
+  .dashboard-command-prompt,
+  .dashboard-command-text {
+    font-size: 12px;
+  }
+
+  .dashboard-copy-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  .dashboard-profile-bubble {
+    bottom: 16px;
+    left: 16px;
+  }
+}

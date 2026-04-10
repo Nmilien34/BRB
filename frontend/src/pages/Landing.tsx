@@ -1,4 +1,7 @@
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../lib/auth';
+import LoginModal from '../components/LoginModal';
 import './Landing.css';
 
 function LinkIcon() {
@@ -47,6 +50,17 @@ function WaveSvg() {
 }
 
 export default function Landing() {
+  const [showLogin, setShowLogin] = useState(false);
+  const navigate = useNavigate();
+  const { user, token, loading } = useAuth();
+
+  // Redirect already-logged-in users to dashboard
+  useEffect(() => {
+    if (!loading && token && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [loading, token, user, navigate]);
+
   return (
     <div className="landing">
       {/* Nav */}
@@ -54,9 +68,9 @@ export default function Landing() {
         <Link to="/" className="landing-nav-logo">
           BRB
         </Link>
-        <Link to="/signin" className="landing-nav-signin">
+        <button type="button" className="landing-nav-signin" onClick={() => setShowLogin(true)}>
           Sign in
-        </Link>
+        </button>
       </nav>
 
       {/* Hero */}
@@ -82,9 +96,9 @@ export default function Landing() {
           />
 
           <div className="landing-cta-wrap">
-            <Link to="/signin" className="landing-cta">
+            <button type="button" className="landing-cta" onClick={() => setShowLogin(true)}>
               Get Started
-            </Link>
+            </button>
             <div className="landing-bubbles">
               <div className="landing-bubble" />
               <div className="landing-bubble" />
@@ -145,6 +159,12 @@ export default function Landing() {
           </a>
         </div>
       </footer>
+
+      <LoginModal
+        open={showLogin}
+        onClose={() => setShowLogin(false)}
+        onSuccess={() => navigate('/dashboard')}
+      />
     </div>
   );
 }

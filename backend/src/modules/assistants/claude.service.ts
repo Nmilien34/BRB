@@ -129,7 +129,7 @@ function buildClaudeSettingsSnippet(
 
 function buildClaudeSetupPayload(
   connection: AssistantConnectionDocument,
-  connectionToken: string,
+  connectionToken: string | null,
   baseUrl: string,
 ) {
   const bridgeConnectUrl = `${baseUrl}/api/assistants/claude/bridge/connect`;
@@ -250,6 +250,13 @@ export async function selectClaudeConnectionForUser(user: UserDocument) {
 export async function getClaudeSetup(user: UserDocument, req: Request) {
   await selectClaudeConnectionForUser(user);
   const connection = ensureSupportedClaudeConnection(await findClaudeConnectionForUser(user));
+
+  // If already connected with a valid token, return the setup payload
+  // without rotating the token (which would kill the active poller)
+  if (connection.status === 'connected' && connection.connectionTokenHash) {
+    return buildClaudeSetupPayload(connection, null, getPublicBaseUrl(req));
+  }
+
   const { rawToken, tokenHash, tokenPreview } = generateAssistantConnectionToken();
 
   connection.connectionTokenHash = tokenHash;
@@ -633,18 +640,24 @@ cat > .brb/stop.sh << 'STOP_EOF'
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")"
-if [ ! -f poller.pid ]; then
-  echo "BRB poller not running."
-  exit 0
+# Unload launchd agent if present
+if [ -f launchd-plist-path ]; then
+  PLIST=$(cat launchd-plist-path)
+  if [ -f "$PLIST" ]; then
+    launchctl unload "$PLIST" 2>/dev/null || true
+    echo "Unloaded launchd agent"
+  fi
 fi
-PID=$(cat poller.pid)
-if kill -0 "$PID" 2>/dev/null; then
-  kill "$PID"
-  echo "BRB poller stopped (PID $PID)"
-else
-  echo "BRB poller not running (stale PID)."
+# Also kill by PID as fallback
+if [ -f poller.pid ]; then
+  PID=$(cat poller.pid)
+  if kill -0 "$PID" 2>/dev/null; then
+    kill "$PID"
+    echo "BRB poller stopped (PID $PID)"
+  fi
+  rm -f poller.pid
 fi
-rm -f poller.pid
+echo "BRB poller stopped."
 STOP_EOF
 
 chmod +x .brb/start.sh .brb/stop.sh
@@ -654,6 +667,69 @@ if [ -f .gitignore ]; then
   grep -qxF '.brb/' .gitignore || echo '.brb/' >> .gitignore
 else
   echo '.brb/' > .gitignore
+fi
+
+# Set up launchd to auto-start poller on login (macOS only)
+if [ "$(uname)" = "Darwin" ]; then
+  PLIST_LABEL="com.brb.claude-poller.$(echo "$(pwd)" | md5 | head -c 8)"
+  PLIST_PATH="$HOME/Library/LaunchAgents/$PLIST_LABEL.plist"
+  BRB_DIR="$(pwd)/.brb"
+
+  # Remove any old BRB poller plist for this project
+  if [ -f "$PLIST_PATH" ]; then
+    launchctl unload "$PLIST_PATH" 2>/dev/null || true
+  fi
+
+  cat > "$PLIST_PATH" << PLIST_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$PLIST_LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$(which node)</string>
+    <string>$BRB_DIR/brb-claude-poller.js</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>$(pwd)</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>BRB_CONNECTION_TOKEN</key>
+    <string>${config.connectionToken}</string>
+    <key>BRB_CONNECT_URL</key>
+    <string>${config.connectUrl}</string>
+    <key>BRB_INSTRUCTIONS_URL</key>
+    <string>${config.instructionsUrl}</string>
+    <key>BRB_INSTRUCTION_RESULT_URL</key>
+    <string>${config.instructionResultUrl}</string>
+    <key>PATH</key>
+    <string>$(echo "$PATH")</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>$BRB_DIR/poller.log</string>
+  <key>StandardErrorPath</key>
+  <string>$BRB_DIR/poller.log</string>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+</dict>
+</plist>
+PLIST_EOF
+
+  # Store plist path so stop.sh can unload it
+  echo "$PLIST_PATH" > .brb/launchd-plist-path
+
+  # Load the agent (starts the poller via launchd)
+  launchctl load "$PLIST_PATH" 2>/dev/null || true
+  echo "  Registered launchd agent — poller will auto-start on login"
 fi
 
 # Send initial connect ping
@@ -670,8 +746,10 @@ else
   echo "  Warning: Connect ping returned $HTTP_CODE (may need a fresh token)"
 fi
 
-# Start the poller
-.brb/start.sh
+# Start the poller (launchd handles this on macOS, fallback to manual start)
+if [ ! -f .brb/launchd-plist-path ]; then
+  .brb/start.sh
+fi
 
 echo ""
 echo "  BRB is set up!"
@@ -680,6 +758,9 @@ echo "  What happened:"
 echo "    - .brb/           Scripts + config (gitignored)"
 echo "    - .claude/settings.json   Claude hooks for approval forwarding"
 echo "    - Background poller running for Telegram instructions"
+if [ -f .brb/launchd-plist-path ]; then
+echo "    - Auto-start on login (launchd agent registered)"
+fi
 echo ""
 echo "  Commands:"
 echo "    .brb/start.sh     Start the poller"

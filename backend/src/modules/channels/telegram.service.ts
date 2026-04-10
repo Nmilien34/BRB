@@ -684,7 +684,7 @@ async function handleTelegramClaudeInstruction(update: TelegramWebhookUpdate): P
       await sendTelegramMessageBestEffort(
         chatId,
         error.status === 409
-          ? 'Claude is not connected right now. Open Claude on your computer first, then try again.'
+          ? "Claude isn't connected right now. Run the install command from your BRB dashboard to reconnect, then try again."
           : 'I could not send that to Claude right now. Please try again shortly.',
       );
     } else {

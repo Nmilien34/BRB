@@ -1,0 +1,119 @@
+.login-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: login-modal-fade-in 0.15s ease;
+}
+
+@keyframes login-modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.login-modal-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 36px 32px 28px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  position: relative;
+}
+
+.login-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 4px;
+  line-height: 1;
+  font-size: 20px;
+}
+
+.login-modal-close:hover {
+  color: #1a1f36;
+}
+
+.login-modal-title {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1f36;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.login-modal-subtitle {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 14px;
+  color: #64748b;
+  margin: 0 0 24px;
+}
+
+.login-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-modal-input {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 15px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  outline: none;
+  color: #1a1f36;
+  transition: border-color 0.15s;
+}
+
+.login-modal-input:focus {
+  border-color: #3b82f6;
+}
+
+.login-modal-input::placeholder {
+  color: #94a3b8;
+}
+
+.login-modal-button {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: #3b82f6;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 4px;
+}
+
+.login-modal-button:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.login-modal-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.login-modal-error {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  color: #ef4444;
+}
+
+@media (max-width: 480px) {
+  .login-modal-card {
+    margin: 0 16px;
+    padding: 28px 24px 22px;
+  }
+}
