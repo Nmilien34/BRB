@@ -144,7 +144,8 @@ async function sendConnectPing() {
 async function pollForInstruction() {
   if (!BRB_INSTRUCTIONS_URL || executingInstruction) return null;
   try {
-    const result = await fetchJSON(BRB_INSTRUCTIONS_URL, { method: 'GET', headers: authHeaders() });
+    const url = BRB_INSTRUCTIONS_URL + '?cwd=' + encodeURIComponent(process.cwd());
+    const result = await fetchJSON(url, { method: 'GET', headers: authHeaders() });
     return result.instruction || null;
   } catch (err) { log('Poll error: ' + err.message); return null; }
 }

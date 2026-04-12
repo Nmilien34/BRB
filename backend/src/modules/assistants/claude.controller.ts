@@ -111,7 +111,8 @@ export const resolveClaudeBridgeApproval: RequestHandler = async (req, res) => {
 
 export const getClaudeBridgeInstruction: RequestHandler = async (req, res) => {
   const connection = requireAssistantConnection(req);
-  const instruction = await claimClaudeBridgeInstruction(connection);
+  const pollerCwd = typeof req.query.cwd === 'string' ? req.query.cwd : null;
+  const instruction = await claimClaudeBridgeInstruction(connection, pollerCwd);
 
   res.json({ instruction });
 };

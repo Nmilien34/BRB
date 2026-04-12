@@ -188,22 +188,43 @@ function parseApprovalCommand(text: string): TelegramApprovalCommand {
   return { type: 'resolve', subject: 'current', replyText: trimmed };
 }
 
-function parseClaudeInstructionPrompt(text: string): { mentioned: boolean; prompt: string | null } {
+interface ClaudeInstructionParse {
+  mentioned: boolean;
+  prompt: string | null;
+  targetProject: string | null;
+}
+
+function parseClaudeInstructionPrompt(text: string): ClaudeInstructionParse {
   const trimmed = text.trim();
   const hasClaudePrefix = /^claude\b/i.test(trimmed);
 
   if (!hasClaudePrefix) {
-    return { mentioned: false, prompt: null };
+    return { mentioned: false, prompt: null, targetProject: null };
   }
 
+  // Match: "Claude @projectname do something"
+  const projectMatch = trimmed.match(/^claude[\s,:-]+@(\S+)[\s,:-]+(.+)$/is);
+  if (projectMatch?.[1] && projectMatch?.[2]) {
+    const targetProject = projectMatch[1].trim();
+    const prompt = projectMatch[2].trim();
+    return { mentioned: true, prompt: prompt.length > 0 ? prompt : null, targetProject };
+  }
+
+  // Match: "Claude @projectname" (no prompt after project)
+  const projectOnlyMatch = trimmed.match(/^claude[\s,:-]+@(\S+)\s*$/is);
+  if (projectOnlyMatch?.[1]) {
+    return { mentioned: true, prompt: null, targetProject: projectOnlyMatch[1].trim() };
+  }
+
+  // Fallback: no project specified
   const match = trimmed.match(/^claude(?:[\s,:-]+)(.+)$/is);
 
   if (!match?.[1]) {
-    return { mentioned: true, prompt: null };
+    return { mentioned: true, prompt: null, targetProject: null };
   }
 
   const prompt = match[1].trim();
-  return { mentioned: true, prompt: prompt.length > 0 ? prompt : null };
+  return { mentioned: true, prompt: prompt.length > 0 ? prompt : null, targetProject: null };
 }
 
 async function findTelegramConnectionForUser(user: UserDocument): Promise<ChannelConnectionDocument | null> {
@@ -641,7 +662,7 @@ async function handleTelegramClaudeInstruction(update: TelegramWebhookUpdate): P
     return false;
   }
 
-  const { mentioned, prompt } = parseClaudeInstructionPrompt(text);
+  const { mentioned, prompt, targetProject } = parseClaudeInstructionPrompt(text);
 
   if (!mentioned) {
     return false;
@@ -676,6 +697,7 @@ async function handleTelegramClaudeInstruction(update: TelegramWebhookUpdate): P
       userId: channelConnection.userId,
       sourceChannelConnectionId: channelConnection.id,
       prompt,
+      targetProject,
     });
   } catch (error) {
     logger.warn({ err: error, updateId: update.update_id, chatId }, 'Failed to queue Telegram Claude instruction');

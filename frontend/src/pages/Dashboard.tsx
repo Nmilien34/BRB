@@ -53,7 +53,7 @@ export default function Dashboard() {
   const [assistantStatus, setAssistantStatus] = useState<string>('loading');
   const [channelStatus, setChannelStatus] = useState<string>('loading');
   const [copied, setCopied] = useState(false);
-  const [activeProjectPath, setActiveProjectPath] = useState<string | null>(null);
+  const [activeProjects, setActiveProjects] = useState<Array<{ path: string; name: string; lastPingAt: string }>>([]);
 
   // Telegram link state
   const [telegramDeepLink, setTelegramDeepLink] = useState<string | null>(null);
@@ -88,8 +88,8 @@ export default function Dashboard() {
           setAssistantStatus(status);
           if (status === 'connected') {
             setInstallUrl('connected');
-            const projectPath = data.connection?.metadata?.lastSeenProjectPath ?? null;
-            setActiveProjectPath(projectPath);
+            const projects = data.connection?.metadata?.activeProjects ?? [];
+            setActiveProjects(projects);
           }
         } else {
           setAssistantStatus('disconnected');
@@ -272,9 +272,9 @@ export default function Dashboard() {
                 <span className="dashboard-command-text" style={{ color: '#4ade80' }}>
                   Connected and running.
                 </span>
-                {activeProjectPath && (
+                {activeProjects.length > 0 && (
                   <span className="dashboard-command-text" style={{ color: '#64748b', fontSize: '12px' }}>
-                    {activeProjectPath.split('/').pop() || activeProjectPath}
+                    {activeProjects.map((p) => p.name).join(', ')}
                   </span>
                 )}
               </div>

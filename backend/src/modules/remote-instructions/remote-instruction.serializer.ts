@@ -10,6 +10,7 @@ export interface PublicRemoteInstruction {
   channelType: ChannelConnectionType;
   prompt: string;
   status: RemoteInstructionStatus;
+  targetProjectPath: string | null;
   targetSessionId: string | null;
   targetSessionLabel: string | null;
   bridgeSessionId: string | null;
@@ -39,6 +40,7 @@ export function serializeRemoteInstruction(
     channelType: timestampedRemoteInstruction.channelType,
     prompt: timestampedRemoteInstruction.prompt,
     status: timestampedRemoteInstruction.status,
+    targetProjectPath: timestampedRemoteInstruction.targetProjectPath ?? null,
     targetSessionId: timestampedRemoteInstruction.targetSessionId ?? null,
     targetSessionLabel: timestampedRemoteInstruction.targetSessionLabel ?? null,
     bridgeSessionId: timestampedRemoteInstruction.bridgeSessionId ?? null,

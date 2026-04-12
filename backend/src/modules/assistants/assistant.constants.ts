@@ -12,12 +12,20 @@ export type AssistantType = (typeof assistantTypes)[number];
 export type AssistantConnectionStatus = (typeof assistantConnectionStatuses)[number];
 export type AssistantConnectionAuthMethod = (typeof assistantConnectionAuthMethods)[number];
 
+export interface ActiveProject {
+  path: string;
+  name: string;
+  lastPingAt: Date;
+  machineName: string | null;
+}
+
 export interface AssistantConnectionMetadata {
   machineName: string | null;
   installedHookVersion: string | null;
   lastPingAt: Date | null;
   lastSeenProjectPath: string | null;
   lastError: string | null;
+  activeProjects: ActiveProject[];
 }
 
 export interface PublicAssistantConnection {

@@ -23,6 +23,7 @@ function serializeMetadata(
     lastPingAt: safeMetadata.lastPingAt ?? null,
     lastSeenProjectPath: safeMetadata.lastSeenProjectPath ?? null,
     lastError: safeMetadata.lastError ?? null,
+    activeProjects: safeMetadata.activeProjects ?? [],
   };
 }
 

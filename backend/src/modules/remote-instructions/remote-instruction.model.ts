@@ -32,6 +32,7 @@ const remoteInstructionSchema = new Schema(
       required: true,
       index: true,
     },
+    targetProjectPath: { type: String, required: false, index: true },
     targetSessionId: { type: String, required: false, index: true },
     targetSessionLabel: { type: String, required: false },
     bridgeSessionId: { type: String, required: false },

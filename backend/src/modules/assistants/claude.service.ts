@@ -12,6 +12,7 @@ import {
 import { generateAssistantConnectionToken, hashAssistantConnectionToken } from './assistant-token.js';
 import { BRIDGE_SCRIPT, POLLER_SCRIPT } from './claude-install-scripts.js';
 import {
+  type ActiveProject,
   type AssistantConnectionMetadata,
   type AssistantConnectionStatus,
   type PublicAssistantConnection,
@@ -78,6 +79,39 @@ function isConnectionStale(connection: AssistantConnectionDocument): boolean {
     ? metadata.lastPingAt
     : new Date(metadata.lastPingAt as string | number);
   return Date.now() - lastPingAt.getTime() > CONNECTION_STALE_THRESHOLD_MS;
+}
+
+const ACTIVE_PROJECT_STALE_MS = 3 * 60 * 1000; // 3 minutes — poller pings every 30s
+
+function upsertActiveProject(
+  connection: AssistantConnectionDocument,
+  projectPath: string | undefined | null,
+  machineName: string | null,
+  now: Date,
+): void {
+  if (!projectPath) return;
+
+  const metadata = getConnectionMetadata(connection);
+  const activeProjects: ActiveProject[] = Array.isArray(metadata.activeProjects)
+    ? [...metadata.activeProjects]
+    : [];
+
+  const projectName = projectPath.split('/').pop() || projectPath;
+  const entry: ActiveProject = { path: projectPath, name: projectName, lastPingAt: now, machineName };
+
+  const existingIndex = activeProjects.findIndex((p) => p.path === projectPath);
+  if (existingIndex >= 0) {
+    activeProjects[existingIndex] = entry;
+  } else {
+    activeProjects.push(entry);
+  }
+
+  // Prune stale projects (poller dead)
+  const fresh = activeProjects.filter(
+    (p) => now.getTime() - new Date(p.lastPingAt).getTime() < ACTIVE_PROJECT_STALE_MS,
+  );
+
+  applyConnectionMetadata(connection, { activeProjects: fresh });
 }
 
 function isClaudeConnectionStatus(status: string): status is AssistantConnectionStatus {
@@ -353,6 +387,7 @@ export async function handleClaudeBridgeConnect(
     lastSeenProjectPath: projectPath,
     lastError: undefined,
   });
+  upsertActiveProject(connection, projectPath, body.machineName ?? null, now);
   await connection.save();
   await markAssistantConnectedOnboarding(connection.userId);
 
@@ -392,11 +427,13 @@ export async function ingestClaudeBridgeEvent(
   connection.status = 'connected';
   connection.lastConnectedAt = connection.lastConnectedAt ?? now;
   connection.lastEventAt = now;
+  const eventProjectPath = normalizedEvent.projectPath ?? normalizedEvent.cwd;
   applyConnectionMetadata(connection, {
     lastPingAt: now,
-    lastSeenProjectPath: normalizedEvent.projectPath ?? normalizedEvent.cwd,
+    lastSeenProjectPath: eventProjectPath,
     lastError: typeof body.error === 'string' ? body.error : undefined,
   });
+  upsertActiveProject(connection, eventProjectPath, null, now);
   await connection.save();
   await markAssistantConnectedOnboarding(connection.userId);
 
@@ -462,8 +499,11 @@ export async function getClaudeBridgeApprovalStatus(
   return getApprovalRequestBridgeStatus(connection, approvalId);
 }
 
-export async function claimClaudeBridgeInstruction(connection: AssistantConnectionDocument) {
-  return claimNextRemoteInstructionForClaude(connection);
+export async function claimClaudeBridgeInstruction(
+  connection: AssistantConnectionDocument,
+  pollerCwd?: string | null,
+) {
+  return claimNextRemoteInstructionForClaude(connection, pollerCwd);
 }
 
 export async function reportClaudeBridgeInstructionResult(

@@ -23,6 +23,7 @@ export function formatTelegramRemoteInstructionQueuedMessage(
   remoteInstruction: RemoteInstructionDocument,
   queuePosition: number = 0,
   projectName: string | null = null,
+  activeProjectCount: number = 1,
 ): string {
   const sessionLabel = getSessionLabel(remoteInstruction);
   const lines = ['🤖 BRB — Sent To Claude', ''];
@@ -34,6 +35,9 @@ export function formatTelegramRemoteInstructionQueuedMessage(
 
   if (projectName) {
     lines.push(`Project: ${projectName}`);
+    if (activeProjectCount > 1) {
+      lines.push('(Tip: use @projectname to target a specific project)');
+    }
     lines.push('');
   }
 

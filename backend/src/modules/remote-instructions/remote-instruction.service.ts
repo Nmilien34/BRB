@@ -3,6 +3,7 @@ import { logger } from '../../utils/index.js';
 import { ChannelConnection } from '../channel-connections/channel-connection.model.js';
 import { ClaudeHookEvent } from '../assistants/claude-hook-event.model.js';
 import { AssistantConnection, type AssistantConnectionDocument } from '../assistants/assistant-connection.model.js';
+import type { ActiveProject } from '../assistants/assistant.constants.js';
 import { telegramClient } from '../channels/telegram.client.js';
 import { RemoteInstruction, type RemoteInstructionDocument } from './remote-instruction.model.js';
 import {
@@ -23,6 +24,7 @@ interface QueueTelegramInstructionInput {
   userId: AssistantConnectionDocument['userId'];
   sourceChannelConnectionId: string;
   prompt: string;
+  targetProject?: string | null;
 }
 
 interface ReportRemoteInstructionResultInput {
@@ -109,10 +111,47 @@ async function getLatestClaudeSessionContext(assistantConnectionId: string) {
   };
 }
 
+function resolveTargetProject(
+  assistantConnection: AssistantConnectionDocument,
+  targetProject: string | null | undefined,
+): { projectPath: string | null; projectName: string | null; activeProjects: ActiveProject[] } {
+  const connectionMetadata = assistantConnection.metadata as Record<string, unknown> | null;
+  const activeProjects: ActiveProject[] = Array.isArray(connectionMetadata?.activeProjects)
+    ? (connectionMetadata.activeProjects as ActiveProject[])
+    : [];
+
+  if (!targetProject) {
+    // Default to most recently active project
+    if (activeProjects.length > 0) {
+      const sorted = [...activeProjects].sort(
+        (a, b) => new Date(b.lastPingAt).getTime() - new Date(a.lastPingAt).getTime(),
+      );
+      return { projectPath: sorted[0].path, projectName: sorted[0].name, activeProjects };
+    }
+    // Fallback to lastSeenProjectPath
+    const lastSeenProjectPath = connectionMetadata?.lastSeenProjectPath as string | null;
+    const projectName = lastSeenProjectPath ? lastSeenProjectPath.split('/').pop() || null : null;
+    return { projectPath: lastSeenProjectPath, projectName, activeProjects };
+  }
+
+  // Match by case-insensitive basename
+  const match = activeProjects.find(
+    (p) => p.name.toLowerCase() === targetProject.toLowerCase(),
+  );
+
+  if (!match) {
+    const activeNames = activeProjects.map((p) => p.name).join(', ') || 'none';
+    throw new HttpError(404, `No active project matching "${targetProject}". Active projects: ${activeNames}`);
+  }
+
+  return { projectPath: match.path, projectName: match.name, activeProjects };
+}
+
 export async function queueTelegramInstructionForClaude({
   userId,
   sourceChannelConnectionId,
   prompt,
+  targetProject,
 }: QueueTelegramInstructionInput): Promise<{
   instruction: RemoteInstructionDocument;
   publicInstruction: PublicRemoteInstruction;
@@ -122,6 +161,11 @@ export async function queueTelegramInstructionForClaude({
   if (!assistantConnection) {
     throw new HttpError(409, 'Claude is not connected right now.');
   }
+
+  const { projectPath, projectName, activeProjects } = resolveTargetProject(
+    assistantConnection,
+    targetProject,
+  );
 
   const [latestSessionContext, pendingCount] = await Promise.all([
     getLatestClaudeSessionContext(assistantConnection.id),
@@ -138,19 +182,16 @@ export async function queueTelegramInstructionForClaude({
     sourceChannelConnectionId,
     prompt,
     status: 'queued',
+    targetProjectPath: projectPath,
     targetSessionId: latestSessionContext.sessionId,
     targetSessionLabel: latestSessionContext.sessionLabel,
   });
-
-  // Extract project name from connection metadata
-  const connectionMetadata = assistantConnection.metadata as Record<string, unknown> | null;
-  const lastSeenProjectPath = connectionMetadata?.lastSeenProjectPath as string | null;
-  const projectName = lastSeenProjectPath ? lastSeenProjectPath.split('/').pop() || null : null;
 
   logger.info(
     {
       remoteInstructionId: instruction.id,
       assistantConnectionId: String(assistantConnection._id),
+      targetProjectPath: projectPath,
       targetSessionId: latestSessionContext.sessionId,
       targetSessionLabel: latestSessionContext.sessionLabel,
       queuePosition: pendingCount,
@@ -161,7 +202,12 @@ export async function queueTelegramInstructionForClaude({
 
   await sendTelegramMessageBestEffort(
     userId,
-    formatTelegramRemoteInstructionQueuedMessage(instruction, pendingCount, projectName),
+    formatTelegramRemoteInstructionQueuedMessage(
+      instruction,
+      pendingCount,
+      projectName,
+      activeProjects.length,
+    ),
   );
 
   return {
@@ -172,11 +218,25 @@ export async function queueTelegramInstructionForClaude({
 
 export async function claimNextRemoteInstructionForClaude(
   assistantConnection: AssistantConnectionDocument,
+  pollerProjectPath?: string | null,
 ): Promise<PublicRemoteInstruction | null> {
   const reclaimBefore = new Date(Date.now() - REMOTE_INSTRUCTION_DISPATCH_TIMEOUT_MS);
+
+  // Build project filter: match this poller's project OR untargeted instructions
+  const projectFilter = pollerProjectPath
+    ? {
+        $or: [
+          { targetProjectPath: pollerProjectPath },
+          { targetProjectPath: null },
+          { targetProjectPath: { $exists: false } },
+        ],
+      }
+    : {};
+
   const instruction = await RemoteInstruction.findOneAndUpdate(
     {
       assistantConnectionId: assistantConnection._id,
+      ...projectFilter,
       $or: [
         { status: 'queued' },
         {
