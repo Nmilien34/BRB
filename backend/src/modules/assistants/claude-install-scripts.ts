@@ -98,10 +98,12 @@ const INSTRUCTION_POLL_INTERVAL_MS = 5000;
 const CLAUDE_EXECUTION_TIMEOUT_MS = 15 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 15000;
 const MAX_REPLY_LENGTH = 3500;
+const MAX_CONSECUTIVE_AUTH_FAILURES = 10;
 
 let running = true;
 let executingInstruction = false;
 let lastSessionId = null;
+let consecutiveAuthFailures = 0;
 
 function log(msg) { const ts = new Date().toISOString(); process.stderr.write('[' + ts + '] ' + msg + '\\n'); }
 
@@ -125,8 +127,18 @@ async function sendConnectPing() {
       method: 'POST', headers: authHeaders(),
       body: JSON.stringify({ machineName: hostname(), cwd: process.cwd() }),
     });
+    consecutiveAuthFailures = 0;
     log('Ping OK — status: ' + result.status + ', away: ' + result.awayModeEnabled);
-  } catch (err) { log('Ping FAILED: ' + err.message); }
+  } catch (err) {
+    log('Ping FAILED: ' + err.message);
+    if (err.message && err.message.includes('401')) {
+      consecutiveAuthFailures++;
+      if (consecutiveAuthFailures >= MAX_CONSECUTIVE_AUTH_FAILURES) {
+        log('Too many consecutive auth failures (' + consecutiveAuthFailures + ') — token is likely invalid. Exiting cleanly. Re-run the install command to get a new token.');
+        running = false;
+      }
+    }
+  }
 }
 
 async function pollForInstruction() {
@@ -249,5 +261,5 @@ async function main() {
 
 process.on('SIGINT', () => { log('SIGINT — shutting down...'); running = false; });
 process.on('SIGTERM', () => { log('SIGTERM — shutting down...'); running = false; });
-main().catch((err) => { log('Fatal: ' + err.message); process.exit(1); });
+main().catch((err) => { log('Fatal: ' + err.message); process.exit(0); });
 `;

@@ -659,10 +659,12 @@ cd "$(dirname "$0")"
 # Unload launchd agent if present
 if [ -f launchd-plist-path ]; then
   PLIST=$(cat launchd-plist-path)
+  LABEL=$(basename "$PLIST" .plist)
+  launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
   if [ -f "$PLIST" ]; then
     launchctl unload "$PLIST" 2>/dev/null || true
-    echo "Unloaded launchd agent"
   fi
+  echo "Unloaded launchd agent"
 fi
 # Also kill by PID as fallback
 if [ -f poller.pid ]; then
@@ -692,9 +694,19 @@ if [ "$(uname)" = "Darwin" ]; then
   BRB_DIR="$(pwd)/.brb"
 
   # Remove any old BRB poller plist for this project
+  launchctl bootout "gui/$(id -u)/$PLIST_LABEL" 2>/dev/null || true
   if [ -f "$PLIST_PATH" ]; then
     launchctl unload "$PLIST_PATH" 2>/dev/null || true
   fi
+
+  # Write a launcher shell script that sources env and runs node
+  cat > "$BRB_DIR/launch-poller.sh" << LAUNCHER_EOF
+#!/bin/bash
+cd "$BRB_DIR/.."
+set -a; source .brb/.env; set +a
+exec $(which node) .brb/brb-claude-poller.js
+LAUNCHER_EOF
+  chmod +x "$BRB_DIR/launch-poller.sh"
 
   cat > "$PLIST_PATH" << PLIST_EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -705,21 +717,13 @@ if [ "$(uname)" = "Darwin" ]; then
   <string>$PLIST_LABEL</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$(which node)</string>
-    <string>$BRB_DIR/brb-claude-poller.js</string>
+    <string>/bin/bash</string>
+    <string>$BRB_DIR/launch-poller.sh</string>
   </array>
   <key>WorkingDirectory</key>
   <string>$(pwd)</string>
   <key>EnvironmentVariables</key>
   <dict>
-    <key>BRB_CONNECTION_TOKEN</key>
-    <string>${config.connectionToken}</string>
-    <key>BRB_CONNECT_URL</key>
-    <string>${config.connectUrl}</string>
-    <key>BRB_INSTRUCTIONS_URL</key>
-    <string>${config.instructionsUrl}</string>
-    <key>BRB_INSTRUCTION_RESULT_URL</key>
-    <string>${config.instructionResultUrl}</string>
     <key>PATH</key>
     <string>$(echo "$PATH")</string>
   </dict>
@@ -744,8 +748,24 @@ PLIST_EOF
   echo "$PLIST_PATH" > .brb/launchd-plist-path
 
   # Load the agent (starts the poller via launchd)
-  launchctl load "$PLIST_PATH" 2>/dev/null || true
-  echo "  Registered launchd agent — poller will auto-start on login"
+  # Use bootstrap (modern API) with load as fallback
+  launchctl bootstrap "gui/$(id -u)" "$PLIST_PATH" 2>/dev/null || launchctl load "$PLIST_PATH" 2>/dev/null || true
+
+  # Verify the agent actually started — if not, fall back to nohup
+  sleep 2
+  LAUNCHD_PID=$(launchctl list "$PLIST_LABEL" 2>/dev/null | head -1 | awk '{print $1}')
+  if [ "$LAUNCHD_PID" != "-" ] && [ -n "$LAUNCHD_PID" ] && [ "$LAUNCHD_PID" != "0" ]; then
+    echo "  Registered launchd agent — poller will auto-start on login"
+  else
+    echo "  launchd agent failed to start — falling back to background process"
+    launchctl bootout "gui/$(id -u)/$PLIST_LABEL" 2>/dev/null || true
+    cd "$(pwd)/.brb"
+    set -a; source .env; set +a
+    nohup $(which node) brb-claude-poller.js >> poller.log 2>&1 &
+    echo $! > poller.pid
+    cd - > /dev/null
+    echo "  Poller running as background process (PID $(cat .brb/poller.pid))"
+  fi
 fi
 
 # Send initial connect ping
