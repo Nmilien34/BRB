@@ -16,6 +16,7 @@ import {
   type AssistantConnectionMetadata,
   type AssistantConnectionStatus,
   type PublicAssistantConnection,
+  sanitizeActiveProjects,
 } from './assistant.constants.js';
 import { serializeAssistantConnection } from './assistant.serializer.js';
 import { ClaudeHookEvent } from './claude-hook-event.model.js';
@@ -92,9 +93,7 @@ function upsertActiveProject(
   if (!projectPath) return;
 
   const metadata = getConnectionMetadata(connection);
-  const activeProjects: ActiveProject[] = Array.isArray(metadata.activeProjects)
-    ? [...metadata.activeProjects]
-    : [];
+  const activeProjects: ActiveProject[] = [...sanitizeActiveProjects(metadata.activeProjects)];
 
   const projectName = projectPath.split('/').pop() || projectPath;
   const entry: ActiveProject = { path: projectPath, name: projectName, lastPingAt: now, machineName };

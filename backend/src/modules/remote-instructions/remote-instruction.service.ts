@@ -3,7 +3,7 @@ import { logger } from '../../utils/index.js';
 import { ChannelConnection } from '../channel-connections/channel-connection.model.js';
 import { ClaudeHookEvent } from '../assistants/claude-hook-event.model.js';
 import { AssistantConnection, type AssistantConnectionDocument } from '../assistants/assistant-connection.model.js';
-import type { ActiveProject } from '../assistants/assistant.constants.js';
+import { type ActiveProject, sanitizeActiveProjects } from '../assistants/assistant.constants.js';
 import { telegramClient } from '../channels/telegram.client.js';
 import { RemoteInstruction, type RemoteInstructionDocument } from './remote-instruction.model.js';
 import {
@@ -116,9 +116,7 @@ function resolveTargetProject(
   targetProject: string | null | undefined,
 ): { projectPath: string | null; projectName: string | null; activeProjects: ActiveProject[] } {
   const connectionMetadata = assistantConnection.metadata as Record<string, unknown> | null;
-  const activeProjects: ActiveProject[] = Array.isArray(connectionMetadata?.activeProjects)
-    ? (connectionMetadata.activeProjects as ActiveProject[])
-    : [];
+  const activeProjects: ActiveProject[] = sanitizeActiveProjects(connectionMetadata?.activeProjects);
 
   if (!targetProject) {
     // Default to most recently active project
@@ -222,29 +220,36 @@ export async function claimNextRemoteInstructionForClaude(
 ): Promise<PublicRemoteInstruction | null> {
   const reclaimBefore = new Date(Date.now() - REMOTE_INSTRUCTION_DISPATCH_TIMEOUT_MS);
 
-  // Build project filter: match this poller's project OR untargeted instructions
+  // Build query with $and to avoid $or key collision
+  const statusFilter = {
+    $or: [
+      { status: 'queued' },
+      {
+        status: 'dispatched',
+        dispatchedAt: { $ne: null, $lte: reclaimBefore },
+        completedAt: null,
+      },
+    ],
+  };
+
+  // Match this poller's project, untargeted instructions, OR orphaned instructions
+  // whose target poller hasn't claimed them within the timeout window
   const projectFilter = pollerProjectPath
     ? {
         $or: [
           { targetProjectPath: pollerProjectPath },
           { targetProjectPath: null },
           { targetProjectPath: { $exists: false } },
+          // Orphan rescue: targeted at another project but queued too long (target poller likely dead)
+          { targetProjectPath: { $ne: pollerProjectPath, $exists: true }, createdAt: { $lte: reclaimBefore } },
         ],
       }
-    : {};
+    : null;
 
   const instruction = await RemoteInstruction.findOneAndUpdate(
     {
       assistantConnectionId: assistantConnection._id,
-      ...projectFilter,
-      $or: [
-        { status: 'queued' },
-        {
-          status: 'dispatched',
-          dispatchedAt: { $ne: null, $lte: reclaimBefore },
-          completedAt: null,
-        },
-      ],
+      $and: [statusFilter, ...(projectFilter ? [projectFilter] : [])],
     },
     {
       $set: {

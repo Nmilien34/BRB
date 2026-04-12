@@ -202,8 +202,8 @@ function parseClaudeInstructionPrompt(text: string): ClaudeInstructionParse {
     return { mentioned: false, prompt: null, targetProject: null };
   }
 
-  // Match: "Claude @projectname do something"
-  const projectMatch = trimmed.match(/^claude[\s,:-]+@(\S+)[\s,:-]+(.+)$/is);
+  // Match: "Claude @projectname do something" (separator before @ is optional)
+  const projectMatch = trimmed.match(/^claude[\s,:-]*@(\S+)[\s,:-]+(.+)$/is);
   if (projectMatch?.[1] && projectMatch?.[2]) {
     const targetProject = projectMatch[1].trim();
     const prompt = projectMatch[2].trim();
@@ -211,7 +211,7 @@ function parseClaudeInstructionPrompt(text: string): ClaudeInstructionParse {
   }
 
   // Match: "Claude @projectname" (no prompt after project)
-  const projectOnlyMatch = trimmed.match(/^claude[\s,:-]+@(\S+)\s*$/is);
+  const projectOnlyMatch = trimmed.match(/^claude[\s,:-]*@(\S+)\s*$/is);
   if (projectOnlyMatch?.[1]) {
     return { mentioned: true, prompt: null, targetProject: projectOnlyMatch[1].trim() };
   }
@@ -703,12 +703,15 @@ async function handleTelegramClaudeInstruction(update: TelegramWebhookUpdate): P
     logger.warn({ err: error, updateId: update.update_id, chatId }, 'Failed to queue Telegram Claude instruction');
 
     if (error instanceof HttpError) {
-      await sendTelegramMessageBestEffort(
-        chatId,
-        error.status === 409
-          ? "Claude isn't connected right now. Run the install command from your BRB dashboard to reconnect, then try again."
-          : 'I could not send that to Claude right now. Please try again shortly.',
-      );
+      let userMessage: string;
+      if (error.status === 409) {
+        userMessage = "Claude isn't connected right now. Run the install command from your BRB dashboard to reconnect, then try again.";
+      } else if (error.status === 404) {
+        userMessage = error.message;
+      } else {
+        userMessage = 'I could not send that to Claude right now. Please try again shortly.';
+      }
+      await sendTelegramMessageBestEffort(chatId, userMessage);
     } else {
       await sendTelegramMessageBestEffort(
         chatId,
