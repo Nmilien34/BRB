@@ -28,7 +28,6 @@ export const requireClaudeBridgeAuth: RequestHandler = async (req, _res, next) =
     }
 
     const connection = await AssistantConnection.findOne({
-      assistantType: 'claude_code',
       connectionTokenHash: hashAssistantConnectionToken(rawToken),
     });
 

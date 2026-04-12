@@ -7,7 +7,7 @@ function truncate(text: string, maxChars: number = TELEGRAM_MESSAGE_MAX_CHARS): 
     return text;
   }
 
-  return `${text.slice(0, maxChars - 1)}…`;
+  return `${text.slice(0, maxChars - 1)}...`;
 }
 
 function getSessionLabel(remoteInstruction: RemoteInstructionDocument): string | null {
@@ -24,12 +24,13 @@ export function formatTelegramRemoteInstructionQueuedMessage(
   queuePosition: number = 0,
   projectName: string | null = null,
   activeProjectCount: number = 1,
+  agentDisplayName: string = 'Claude',
 ): string {
   const sessionLabel = getSessionLabel(remoteInstruction);
-  const lines = ['🤖 BRB — Sent To Claude', ''];
+  const lines = [`Sent To ${agentDisplayName}`, ''];
 
   if (queuePosition > 0) {
-    lines.push(`Queued — ${queuePosition} instruction${queuePosition === 1 ? '' : 's'} ahead`);
+    lines.push(`Queued -- ${queuePosition} instruction${queuePosition === 1 ? '' : 's'} ahead`);
     lines.push('');
   }
 
@@ -48,23 +49,24 @@ export function formatTelegramRemoteInstructionQueuedMessage(
 
   lines.push(truncate(remoteInstruction.prompt, 700));
   lines.push('');
-  lines.push("I'll send Claude's reply here when it's ready.");
+  lines.push(`I'll send ${agentDisplayName}'s reply here when it's ready.`);
 
   return lines.join('\n');
 }
 
 export function formatTelegramRemoteInstructionReplyMessage(
   remoteInstruction: RemoteInstructionDocument,
+  agentDisplayName: string = 'Claude',
 ): string {
   const sessionLabel = getSessionLabel(remoteInstruction);
-  const lines = ['🤖 BRB — Claude Reply', ''];
+  const lines = [`${agentDisplayName} Reply`, ''];
 
   if (sessionLabel) {
     lines.push(`Session: ${sessionLabel}`);
     lines.push('');
   }
 
-  const replyText = truncate(remoteInstruction.replyText?.trim() || 'Claude finished, but did not return a message.');
+  const replyText = truncate(remoteInstruction.replyText?.trim() || `${agentDisplayName} finished, but did not return a message.`);
   lines.push(replyText);
 
   return lines.join('\n');
@@ -72,9 +74,10 @@ export function formatTelegramRemoteInstructionReplyMessage(
 
 export function formatTelegramRemoteInstructionFailureMessage(
   remoteInstruction: RemoteInstructionDocument,
+  agentDisplayName: string = 'Claude',
 ): string {
   const sessionLabel = getSessionLabel(remoteInstruction);
-  const lines = ['🤖 BRB — Claude Couldn’t Complete That', ''];
+  const lines = [`${agentDisplayName} Couldn't Complete That`, ''];
 
   if (sessionLabel) {
     lines.push(`Session: ${sessionLabel}`);
@@ -84,7 +87,7 @@ export function formatTelegramRemoteInstructionFailureMessage(
   lines.push(
     truncate(
       remoteInstruction.errorMessage?.trim() ||
-        'Claude did not complete the request. Try again or ask for more details from your computer.',
+        `${agentDisplayName} did not complete the request. Try again or ask for more details from your computer.`,
       1200,
     ),
   );

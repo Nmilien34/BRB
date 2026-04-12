@@ -22,12 +22,18 @@ import {
   formatTelegramSelectedApprovalPrompt,
   formatTelegramApprovalWhyMessage,
 } from '../delivery/formatters/approval-message.formatter.js';
-import { queueTelegramInstructionForClaude } from '../remote-instructions/remote-instruction.service.js';
+import { queueTelegramInstructionForAgent } from '../remote-instructions/remote-instruction.service.js';
+import {
+  type AssistantType,
+  agentNamePattern,
+  resolveAgentName,
+  getAgentDisplayName,
+} from '../assistants/assistant.constants.js';
 
 const TELEGRAM_CHANNEL_TYPE = 'telegram';
 const CONNECT_TOKEN_EXPIRY_MS = 15 * 60 * 1000;
 const NO_PENDING_APPROVALS_MESSAGE =
-  'No pending approvals right now.\nTo send Claude a new instruction, start your message with "Claude ...".';
+  'No pending approvals right now.\nTo send an instruction, start your message with an agent name (e.g., "Claude ...").';
 
 interface TelegramConnectionMetadata {
   telegramUserId?: string | null;
@@ -37,6 +43,7 @@ interface TelegramConnectionMetadata {
   selectedApprovalRequestId?: string | null;
   connectTokenHash?: string | null;
   connectTokenExpiresAt?: Date | string | null;
+  lastUsedAssistantType?: AssistantType | null;
 }
 
 interface TelegramStartResponse {
@@ -188,43 +195,47 @@ function parseApprovalCommand(text: string): TelegramApprovalCommand {
   return { type: 'resolve', subject: 'current', replyText: trimmed };
 }
 
-interface ClaudeInstructionParse {
+interface AgentInstructionParse {
   mentioned: boolean;
+  assistantType: AssistantType | null;
   prompt: string | null;
   targetProject: string | null;
 }
 
-function parseClaudeInstructionPrompt(text: string): ClaudeInstructionParse {
+function parseAgentInstructionPrompt(text: string): AgentInstructionParse {
   const trimmed = text.trim();
-  const hasClaudePrefix = /^claude\b/i.test(trimmed);
+  const nameMatch = trimmed.match(agentNamePattern);
 
-  if (!hasClaudePrefix) {
-    return { mentioned: false, prompt: null, targetProject: null };
+  if (!nameMatch?.[1]) {
+    return { mentioned: false, assistantType: null, prompt: null, targetProject: null };
   }
 
-  // Match: "Claude @projectname do something" (separator before @ is optional)
-  const projectMatch = trimmed.match(/^claude[\s,:-]*@(\S+)[\s,:-]+(.+)$/is);
+  const matchedName = nameMatch[1];
+  const assistantType = resolveAgentName(matchedName);
+  const remainder = trimmed.slice(matchedName.length);
+
+  // Match: "@projectname do something" (separator before @ is optional)
+  const projectMatch = remainder.match(/^[\s,:-]*@(\S+)[\s,:-]+(.+)$/is);
   if (projectMatch?.[1] && projectMatch?.[2]) {
     const targetProject = projectMatch[1].trim();
     const prompt = projectMatch[2].trim();
-    return { mentioned: true, prompt: prompt.length > 0 ? prompt : null, targetProject };
+    return { mentioned: true, assistantType, prompt: prompt.length > 0 ? prompt : null, targetProject };
   }
 
-  // Match: "Claude @projectname" (no prompt after project)
-  const projectOnlyMatch = trimmed.match(/^claude[\s,:-]*@(\S+)\s*$/is);
+  // Match: "@projectname" (no prompt after project)
+  const projectOnlyMatch = remainder.match(/^[\s,:-]*@(\S+)\s*$/is);
   if (projectOnlyMatch?.[1]) {
-    return { mentioned: true, prompt: null, targetProject: projectOnlyMatch[1].trim() };
+    return { mentioned: true, assistantType, prompt: null, targetProject: projectOnlyMatch[1].trim() };
   }
 
   // Fallback: no project specified
-  const match = trimmed.match(/^claude(?:[\s,:-]+)(.+)$/is);
-
-  if (!match?.[1]) {
-    return { mentioned: true, prompt: null, targetProject: null };
+  const promptMatch = remainder.match(/^(?:[\s,:-]+)(.+)$/is);
+  if (!promptMatch?.[1]) {
+    return { mentioned: true, assistantType, prompt: null, targetProject: null };
   }
 
-  const prompt = match[1].trim();
-  return { mentioned: true, prompt: prompt.length > 0 ? prompt : null, targetProject: null };
+  const prompt = promptMatch[1].trim();
+  return { mentioned: true, assistantType, prompt: prompt.length > 0 ? prompt : null, targetProject: null };
 }
 
 async function findTelegramConnectionForUser(user: UserDocument): Promise<ChannelConnectionDocument | null> {
@@ -653,7 +664,7 @@ async function handleApprovalReply(update: TelegramWebhookUpdate): Promise<void>
   );
 }
 
-async function handleTelegramClaudeInstruction(update: TelegramWebhookUpdate): Promise<boolean> {
+async function handleTelegramAgentInstruction(update: TelegramWebhookUpdate): Promise<boolean> {
   const message = update.message ?? update.edited_message;
   const text = message?.text?.trim();
   const chatId = message?.chat ? String(message.chat.id) : null;
@@ -662,16 +673,16 @@ async function handleTelegramClaudeInstruction(update: TelegramWebhookUpdate): P
     return false;
   }
 
-  const { mentioned, prompt, targetProject } = parseClaudeInstructionPrompt(text);
+  const parsed = parseAgentInstructionPrompt(text);
 
-  if (!mentioned) {
+  if (!parsed.mentioned) {
     return false;
   }
 
   const channelConnection = await findTelegramConnectionByChatId(chatId);
 
   if (!channelConnection) {
-    logger.info({ updateId: update.update_id, chatId }, 'Unknown Telegram Claude instruction received');
+    logger.info({ updateId: update.update_id, chatId }, 'Unknown Telegram agent instruction received');
     await sendTelegramMessageBestEffort(
       chatId,
       "This Telegram account isn't linked to BRB yet.\nOpen the BRB app and go through the Telegram connect step to link it.",
@@ -679,43 +690,51 @@ async function handleTelegramClaudeInstruction(update: TelegramWebhookUpdate): P
     return true;
   }
 
+  const effectiveAssistantType = parsed.assistantType ?? 'claude_code';
+  const displayName = getAgentDisplayName(effectiveAssistantType);
+
   logger.info(
-    { updateId: update.update_id, userId: String(channelConnection.userId), chatId },
-    'Telegram Claude instruction received',
+    { updateId: update.update_id, userId: String(channelConnection.userId), chatId, assistantType: effectiveAssistantType },
+    `Telegram ${displayName} instruction received`,
   );
 
-  if (!prompt) {
+  if (!parsed.prompt) {
     await sendTelegramMessageBestEffort(
       chatId,
-      'Start your message with "Claude" followed by what you want it to do.\nExample: Claude, check my last few commits and tell me what you were working on.',
+      `Start your message with "${displayName}" followed by what you want it to do.\nExample: ${displayName}, check my last few commits and tell me what you were working on.`,
     );
     return true;
   }
 
+  // Track last used agent for future bare instructions
+  setTelegramMetadata(channelConnection, { lastUsedAssistantType: effectiveAssistantType });
+  await channelConnection.save();
+
   try {
-    await queueTelegramInstructionForClaude({
+    await queueTelegramInstructionForAgent({
       userId: channelConnection.userId,
       sourceChannelConnectionId: channelConnection.id,
-      prompt,
-      targetProject,
+      prompt: parsed.prompt,
+      targetProject: parsed.targetProject,
+      assistantType: effectiveAssistantType,
     });
   } catch (error) {
-    logger.warn({ err: error, updateId: update.update_id, chatId }, 'Failed to queue Telegram Claude instruction');
+    logger.warn({ err: error, updateId: update.update_id, chatId }, `Failed to queue Telegram ${displayName} instruction`);
 
     if (error instanceof HttpError) {
       let userMessage: string;
       if (error.status === 409) {
-        userMessage = "Claude isn't connected right now. Run the install command from your BRB dashboard to reconnect, then try again.";
+        userMessage = `${displayName} isn't connected right now. Run the install command from your BRB dashboard to reconnect, then try again.`;
       } else if (error.status === 404) {
         userMessage = error.message;
       } else {
-        userMessage = 'I could not send that to Claude right now. Please try again shortly.';
+        userMessage = `I could not send that to ${displayName} right now. Please try again shortly.`;
       }
       await sendTelegramMessageBestEffort(chatId, userMessage);
     } else {
       await sendTelegramMessageBestEffort(
         chatId,
-        'I could not send that to Claude right now. Please try again shortly.',
+        `I could not send that to ${displayName} right now. Please try again shortly.`,
       );
     }
   }
@@ -750,7 +769,7 @@ export async function handleTelegramWebhookUpdate(update: TelegramWebhookUpdate)
     return;
   }
 
-  if (await handleTelegramClaudeInstruction(update)) {
+  if (await handleTelegramAgentInstruction(update)) {
     return;
   }
 
@@ -769,11 +788,42 @@ export async function handleTelegramWebhookUpdate(update: TelegramWebhookUpdate)
     return;
   }
 
+  // Bare instruction (no agent prefix) — route to last used agent if available
+  if (message.chat && text.length > 0) {
+    const chatId = String(message.chat.id);
+    const channelConnection = await findTelegramConnectionByChatId(chatId);
+    if (channelConnection) {
+      const metadata = getTelegramMetadata(channelConnection);
+      const lastUsedType = metadata.lastUsedAssistantType;
+      if (lastUsedType) {
+        const displayName = getAgentDisplayName(lastUsedType);
+        try {
+          await queueTelegramInstructionForAgent({
+            userId: channelConnection.userId,
+            sourceChannelConnectionId: channelConnection.id,
+            prompt: text,
+            assistantType: lastUsedType,
+          });
+        } catch (error) {
+          if (error instanceof HttpError) {
+            await sendTelegramMessageBestEffort(chatId, error.status === 409
+              ? `${displayName} isn't connected right now. Run the install command from your BRB dashboard to reconnect, then try again.`
+              : error.status === 404 ? error.message
+              : `I could not send that to ${displayName} right now. Please try again shortly.`);
+          } else {
+            await sendTelegramMessageBestEffort(chatId, `I could not send that to ${displayName} right now. Please try again shortly.`);
+          }
+        }
+        return;
+      }
+    }
+  }
+
   // Unrecognized message — send help
   if (message.chat) {
     await sendTelegramMessageBestEffort(
       String(message.chat.id),
-      'To send Claude an instruction, start your message with "Claude".\nExample: Claude, check my last few commits\n\nTo manage approvals, reply "list" to see pending requests.',
+      'To send an instruction, start with an agent name (Claude, Codex, Cursor, Antigravity).\nExample: Claude, check my last few commits\n\nTo manage approvals, reply "list" to see pending requests.',
     );
   }
 }

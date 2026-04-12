@@ -3,7 +3,7 @@ import { logger } from '../../utils/index.js';
 import { ChannelConnection } from '../channel-connections/channel-connection.model.js';
 import { ClaudeHookEvent } from '../assistants/claude-hook-event.model.js';
 import { AssistantConnection, type AssistantConnectionDocument } from '../assistants/assistant-connection.model.js';
-import { type ActiveProject, sanitizeActiveProjects } from '../assistants/assistant.constants.js';
+import { type ActiveProject, type AssistantType, getAgentDisplayName, sanitizeActiveProjects } from '../assistants/assistant.constants.js';
 import { telegramClient } from '../channels/telegram.client.js';
 import { RemoteInstruction, type RemoteInstructionDocument } from './remote-instruction.model.js';
 import {
@@ -16,7 +16,6 @@ import {
   formatTelegramRemoteInstructionFailureMessage,
 } from '../delivery/formatters/remote-message.formatter.js';
 
-const CLAUDE_ASSISTANT_TYPE = 'claude_code';
 const REMOTE_INSTRUCTION_DISPATCH_TIMEOUT_MS = 20 * 60 * 1000; // must exceed poller's CLAUDE_EXECUTION_TIMEOUT_MS (15 min)
 const CONNECTION_STALE_THRESHOLD_MS = 90_000; // 3× the 30s ping interval — must match claude.service.ts
 
@@ -25,6 +24,7 @@ interface QueueTelegramInstructionInput {
   sourceChannelConnectionId: string;
   prompt: string;
   targetProject?: string | null;
+  assistantType: AssistantType;
 }
 
 interface ReportRemoteInstructionResultInput {
@@ -36,12 +36,13 @@ interface ReportRemoteInstructionResultInput {
   sessionLabel?: string | null;
 }
 
-async function findConnectedClaudeConnectionForUser(
+async function findConnectedAssistantConnectionForUser(
   userId: AssistantConnectionDocument['userId'],
+  assistantType: AssistantType,
 ): Promise<AssistantConnectionDocument | null> {
   const connection = await AssistantConnection.findOne({
     userId,
-    assistantType: CLAUDE_ASSISTANT_TYPE,
+    assistantType,
     status: 'connected',
   });
 
@@ -145,19 +146,21 @@ function resolveTargetProject(
   return { projectPath: match.path, projectName: match.name, activeProjects };
 }
 
-export async function queueTelegramInstructionForClaude({
+export async function queueTelegramInstructionForAgent({
   userId,
   sourceChannelConnectionId,
   prompt,
   targetProject,
+  assistantType,
 }: QueueTelegramInstructionInput): Promise<{
   instruction: RemoteInstructionDocument;
   publicInstruction: PublicRemoteInstruction;
 }> {
-  const assistantConnection = await findConnectedClaudeConnectionForUser(userId);
+  const displayName = getAgentDisplayName(assistantType);
+  const assistantConnection = await findConnectedAssistantConnectionForUser(userId, assistantType);
 
   if (!assistantConnection) {
-    throw new HttpError(409, 'Claude is not connected right now.');
+    throw new HttpError(409, `${displayName} is not connected right now.`);
   }
 
   const { projectPath, projectName, activeProjects } = resolveTargetProject(
@@ -189,13 +192,14 @@ export async function queueTelegramInstructionForClaude({
     {
       remoteInstructionId: instruction.id,
       assistantConnectionId: String(assistantConnection._id),
+      assistantType,
       targetProjectPath: projectPath,
       targetSessionId: latestSessionContext.sessionId,
       targetSessionLabel: latestSessionContext.sessionLabel,
       queuePosition: pendingCount,
       projectName,
     },
-    'Queued Telegram remote instruction for Claude',
+    `Queued Telegram remote instruction for ${displayName}`,
   );
 
   await sendTelegramMessageBestEffort(
@@ -205,6 +209,7 @@ export async function queueTelegramInstructionForClaude({
       pendingCount,
       projectName,
       activeProjects.length,
+      displayName,
     ),
   );
 
@@ -213,6 +218,11 @@ export async function queueTelegramInstructionForClaude({
     publicInstruction: serializeRemoteInstruction(instruction),
   };
 }
+
+/** @deprecated Use queueTelegramInstructionForAgent instead */
+export const queueTelegramInstructionForClaude = (
+  input: Omit<QueueTelegramInstructionInput, 'assistantType'>,
+) => queueTelegramInstructionForAgent({ ...input, assistantType: 'claude_code' });
 
 export async function claimNextRemoteInstructionForClaude(
   assistantConnection: AssistantConnectionDocument,
@@ -305,20 +315,22 @@ export async function reportRemoteInstructionResultForClaude(
   instruction.completedAt = new Date();
   await instruction.save();
 
+  const displayName = getAgentDisplayName(assistantConnection.assistantType as AssistantType);
+
   logger.info(
     {
       remoteInstructionId: instruction.id,
       assistantConnectionId: String(assistantConnection._id),
       status: instruction.status,
     },
-    'Claude bridge reported remote instruction result',
+    `${displayName} bridge reported remote instruction result`,
   );
 
   await sendTelegramMessageBestEffort(
     instruction.userId,
     input.status === 'completed'
-      ? formatTelegramRemoteInstructionReplyMessage(instruction)
-      : formatTelegramRemoteInstructionFailureMessage(instruction),
+      ? formatTelegramRemoteInstructionReplyMessage(instruction, displayName)
+      : formatTelegramRemoteInstructionFailureMessage(instruction, displayName),
   );
 
   return serializeRemoteInstruction(instruction);
