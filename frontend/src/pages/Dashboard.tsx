@@ -366,6 +366,60 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Commands reference */}
+        <div className="dashboard-commands">
+          <p className="dashboard-commands-label">Commands</p>
+          <div className="dashboard-commands-grid">
+            <div className="dashboard-commands-group">
+              <p className="dashboard-commands-group-title">Send instructions</p>
+              <div className="dashboard-commands-list">
+                <div className="dashboard-command-row">
+                  <code>Claude &lt;message&gt;</code>
+                  <span>Send an instruction to Claude</span>
+                </div>
+                <div className="dashboard-command-row">
+                  <code>Codex &lt;message&gt;</code>
+                  <span>Send an instruction to Codex</span>
+                </div>
+                <div className="dashboard-command-row">
+                  <code>Cursor &lt;message&gt;</code>
+                  <span>Send an instruction to Cursor</span>
+                </div>
+              </div>
+            </div>
+            <div className="dashboard-commands-group">
+              <p className="dashboard-commands-group-title">Target a project</p>
+              <div className="dashboard-commands-list">
+                <div className="dashboard-command-row">
+                  <code>Claude @project &lt;message&gt;</code>
+                  <span>Send to a specific project</span>
+                </div>
+                <div className="dashboard-command-row">
+                  <code>&lt;message&gt;</code>
+                  <span>Sends to last used agent</span>
+                </div>
+              </div>
+            </div>
+            <div className="dashboard-commands-group">
+              <p className="dashboard-commands-group-title">Approvals</p>
+              <div className="dashboard-commands-list">
+                <div className="dashboard-command-row">
+                  <code>list</code>
+                  <span>View pending approvals</span>
+                </div>
+                <div className="dashboard-command-row">
+                  <code>yes / no</code>
+                  <span>Approve or deny current request</span>
+                </div>
+                <div className="dashboard-command-row">
+                  <code>why</code>
+                  <span>Get details on current approval</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Instruction history */}
         <div className="dashboard-history">
           <p className="dashboard-history-label">Message history</p>
@@ -375,7 +429,7 @@ export default function Dashboard() {
           ) : instructions.length === 0 ? (
             <div className="dashboard-empty">
               No messages yet.<br />
-              Send your first instruction through Telegram — start with "Claude".
+              Send your first instruction through Telegram -- start with an agent name like "Claude".
             </div>
           ) : (
             <>

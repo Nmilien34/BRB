@@ -50,6 +50,15 @@ export function formatTelegramRemoteInstructionQueuedMessage(
   lines.push(truncate(remoteInstruction.prompt, 700));
   lines.push('');
   lines.push(`I'll send ${agentDisplayName}'s reply here when it's ready.`);
+  lines.push('');
+  lines.push('---');
+  lines.push('Quick commands:');
+  lines.push(`  ${agentDisplayName} <message> - send instruction`);
+  if (activeProjectCount > 1) {
+    lines.push(`  ${agentDisplayName} @project <message> - target project`);
+  }
+  lines.push('  Codex/Cursor/Claude - switch agents');
+  lines.push('  list - view pending approvals');
 
   return lines.join('\n');
 }
