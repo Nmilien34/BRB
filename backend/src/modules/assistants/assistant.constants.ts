@@ -52,6 +52,11 @@ export function getAgentDisplayName(assistantType: AssistantType): string {
   return agentDisplayNames[assistantType] ?? assistantType;
 }
 
+// --- Shared thresholds ---
+
+/** Connection is stale if no ping in 3× the 30s interval. Must stay in sync everywhere. */
+export const CONNECTION_STALE_THRESHOLD_MS = 90_000;
+
 // --- Active project types ---
 
 export interface ActiveProject {

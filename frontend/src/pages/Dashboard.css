@@ -68,12 +68,8 @@
   margin: 0 auto;
 }
 
-/* Connection card */
-.dashboard-connection {
-  width: 100%;
-}
-
-.dashboard-connection-label {
+/* Shared section label */
+.dashboard-section-label {
   font-family: 'Geist', system-ui, sans-serif;
   font-size: 12px;
   font-weight: 600;
@@ -81,6 +77,116 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-bottom: 10px;
+}
+
+/* Agents section */
+.dashboard-agents {
+  width: 100%;
+}
+
+.dashboard-agents-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-agent-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px 18px;
+  transition: border-color 0.15s;
+}
+
+.dashboard-agent-card.connected {
+  border-color: #a7f3d0;
+  background: #f0fdf4;
+}
+
+.dashboard-agent-card.coming-soon {
+  opacity: 0.5;
+}
+
+.dashboard-agent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dashboard-agent-name {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1f36;
+}
+
+.dashboard-agent-card.coming-soon .dashboard-agent-name {
+  color: #94a3b8;
+}
+
+.dashboard-agent-status {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dashboard-agent-status.connected {
+  color: #059669;
+}
+
+.dashboard-agent-badge {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  background: #f1f5f9;
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+
+.dashboard-agent-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.dashboard-agent-connected-text {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  color: #059669;
+}
+
+.dashboard-agent-disconnected-text {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.dashboard-agent-setup-btn {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: #1a1f36;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.dashboard-agent-setup-btn:hover {
+  background: #2d3348;
+}
+
+.dashboard-agent-setup-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dashboard-agent-install {
+  margin-top: 10px;
 }
 
 .dashboard-command {
@@ -142,16 +248,6 @@
 /* Channels section */
 .dashboard-channels {
   width: 100%;
-}
-
-.dashboard-channels-label {
-  font-family: 'Geist', system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  color: #94a3b8;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 10px;
 }
 
 .dashboard-channels-grid {
@@ -267,16 +363,6 @@
   width: 100%;
 }
 
-.dashboard-commands-label {
-  font-family: 'Geist', system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  color: #94a3b8;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
-
 .dashboard-commands-grid {
   display: flex;
   flex-direction: column;
@@ -329,15 +415,6 @@
   width: 100%;
 }
 
-.dashboard-history-label {
-  font-family: 'Geist', system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  color: #94a3b8;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 14px;
-}
 
 .dashboard-history-list {
   display: flex;

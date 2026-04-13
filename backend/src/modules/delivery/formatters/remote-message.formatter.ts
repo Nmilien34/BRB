@@ -57,7 +57,7 @@ export function formatTelegramRemoteInstructionQueuedMessage(
   if (activeProjectCount > 1) {
     lines.push(`  ${agentDisplayName} @project <message> - target project`);
   }
-  lines.push('  Codex/Cursor/Claude - switch agents');
+  lines.push('  Claude/Codex/Cursor/AG - switch agents');
   lines.push('  list - view pending approvals');
 
   return lines.join('\n');

@@ -16,6 +16,7 @@ import {
   type AssistantConnectionMetadata,
   type AssistantConnectionStatus,
   type PublicAssistantConnection,
+  CONNECTION_STALE_THRESHOLD_MS,
   sanitizeActiveProjects,
 } from './assistant.constants.js';
 import { serializeAssistantConnection } from './assistant.serializer.js';
@@ -45,7 +46,7 @@ import {
 
 const CLAUDE_ASSISTANT_TYPE = 'claude_code';
 const DEFAULT_ESCALATION_DELAY_MINUTES = 2;
-const CONNECTION_STALE_THRESHOLD_MS = 90_000; // 3× the 30s ping interval
+// CONNECTION_STALE_THRESHOLD_MS imported from assistant.constants.ts
 
 function getConnectionMetadata(connection: AssistantConnectionDocument): Partial<AssistantConnectionMetadata> {
   if (!connection.metadata || typeof connection.metadata !== 'object') {

@@ -3,7 +3,7 @@ import { logger } from '../../utils/index.js';
 import { ChannelConnection } from '../channel-connections/channel-connection.model.js';
 import { ClaudeHookEvent } from '../assistants/claude-hook-event.model.js';
 import { AssistantConnection, type AssistantConnectionDocument } from '../assistants/assistant-connection.model.js';
-import { type ActiveProject, type AssistantType, getAgentDisplayName, sanitizeActiveProjects } from '../assistants/assistant.constants.js';
+import { type ActiveProject, type AssistantType, CONNECTION_STALE_THRESHOLD_MS, getAgentDisplayName, sanitizeActiveProjects } from '../assistants/assistant.constants.js';
 import { telegramClient } from '../channels/telegram.client.js';
 import { RemoteInstruction, type RemoteInstructionDocument } from './remote-instruction.model.js';
 import {
@@ -17,7 +17,7 @@ import {
 } from '../delivery/formatters/remote-message.formatter.js';
 
 const REMOTE_INSTRUCTION_DISPATCH_TIMEOUT_MS = 20 * 60 * 1000; // must exceed poller's CLAUDE_EXECUTION_TIMEOUT_MS (15 min)
-const CONNECTION_STALE_THRESHOLD_MS = 90_000; // 3× the 30s ping interval — must match claude.service.ts
+// CONNECTION_STALE_THRESHOLD_MS imported from assistant.constants.ts
 
 interface QueueTelegramInstructionInput {
   userId: AssistantConnectionDocument['userId'];
@@ -54,7 +54,12 @@ async function findConnectedAssistantConnectionForUser(
   if (lastPingAt) {
     const pingTime = lastPingAt instanceof Date ? lastPingAt : new Date(lastPingAt as string | number);
     if (Date.now() - pingTime.getTime() > CONNECTION_STALE_THRESHOLD_MS) {
-      return null; // poller is likely dead
+      // Mark stale connection as disconnected so other queries see accurate status
+      connection.status = 'disconnected';
+      await connection.save().catch((err) => {
+        logger.warn({ err, connectionId: String(connection._id) }, 'Failed to mark stale connection as disconnected');
+      });
+      return null;
     }
   }
 
@@ -169,7 +174,9 @@ export async function queueTelegramInstructionForAgent({
   );
 
   const [latestSessionContext, pendingCount] = await Promise.all([
-    getLatestClaudeSessionContext(assistantConnection.id),
+    assistantType === 'claude_code'
+      ? getLatestClaudeSessionContext(assistantConnection.id)
+      : Promise.resolve({ sessionId: null, sessionLabel: null }),
     RemoteInstruction.countDocuments({
       assistantConnectionId: assistantConnection._id,
       status: { $in: ['queued', 'dispatched'] },
@@ -218,11 +225,6 @@ export async function queueTelegramInstructionForAgent({
     publicInstruction: serializeRemoteInstruction(instruction),
   };
 }
-
-/** @deprecated Use queueTelegramInstructionForAgent instead */
-export const queueTelegramInstructionForClaude = (
-  input: Omit<QueueTelegramInstructionInput, 'assistantType'>,
-) => queueTelegramInstructionForAgent({ ...input, assistantType: 'claude_code' });
 
 export async function claimNextRemoteInstructionForClaude(
   assistantConnection: AssistantConnectionDocument,
