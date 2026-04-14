@@ -23,6 +23,7 @@ const assistantConnectionSchema = new Schema(
     },
     connectionTokenHash: { type: String, required: false },
     connectionTokenPreview: { type: String, required: false },
+    connectionTokenEncrypted: { type: String, required: false },
     metadata: { type: Schema.Types.Mixed, default: () => ({}) },
     awayModeEnabled: { type: Boolean, default: false, required: true },
     awayModeActivatedAt: { type: Date, default: null },

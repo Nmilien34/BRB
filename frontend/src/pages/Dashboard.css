@@ -151,10 +151,67 @@
   margin-top: 10px;
 }
 
+.dashboard-agent-connected-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .dashboard-agent-connected-text {
   font-family: 'Geist', system-ui, sans-serif;
   font-size: 13px;
   color: #059669;
+}
+
+.dashboard-agent-project-count {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #059669;
+  background: #d1fae5;
+  padding: 2px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.dashboard-agent-project-names {
+  display: block;
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.dashboard-agent-add-project-btn {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #059669;
+  background: transparent;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  padding: 5px 14px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.dashboard-agent-add-project-btn:hover {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+}
+
+.dashboard-agent-add-project-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dashboard-agent-install-label {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 8px;
+  margin-top: 12px;
 }
 
 .dashboard-agent-disconnected-text {

@@ -337,13 +337,48 @@ export default function Dashboard() {
                   </div>
 
                   {state.status === 'connected' ? (
-                    <div className="dashboard-agent-body">
-                      <span className="dashboard-agent-connected-text">
-                        Running
+                    <div>
+                      <div className="dashboard-agent-body">
+                        <div className="dashboard-agent-connected-info">
+                          <span className="dashboard-agent-connected-text">Running</span>
+                          {state.activeProjects.length > 0 && (
+                            <span className="dashboard-agent-project-count">
+                              {state.activeProjects.length} {state.activeProjects.length === 1 ? 'project' : 'projects'}
+                            </span>
+                          )}
+                        </div>
                         {state.activeProjects.length > 0 && (
-                          <> &middot; {state.activeProjects.map((p) => p.name).join(', ')}</>
+                          <span className="dashboard-agent-project-names">
+                            {state.activeProjects.map((p) => p.name).join(', ')}
+                          </span>
                         )}
-                      </span>
+                        {!state.installUrl && (
+                          <button
+                            type="button"
+                            className="dashboard-agent-add-project-btn"
+                            onClick={() => handleGenerateInstall(agent.key)}
+                            disabled={state.generating}
+                          >
+                            {state.generating ? 'Generating...' : '+ Add project'}
+                          </button>
+                        )}
+                      </div>
+                      {state.installUrl && state.installUrl !== 'connected' && (
+                        <div className="dashboard-agent-install">
+                          <p className="dashboard-agent-install-label">Run in your next project directory:</p>
+                          <div className="dashboard-command">
+                            <span className="dashboard-command-prompt">$</span>
+                            <span className="dashboard-command-text">{state.installUrl}</span>
+                            <button
+                              type="button"
+                              className={`dashboard-copy-btn${state.copied ? ' copied' : ''}`}
+                              onClick={() => handleCopy(agent.key)}
+                            >
+                              {state.copied ? 'COPIED' : 'COPY'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : state.installUrl && state.installUrl !== 'connected' ? (
                     <div className="dashboard-agent-install">

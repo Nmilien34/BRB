@@ -9,7 +9,12 @@ import {
   type AssistantConnectionDocument,
   AssistantConnection,
 } from './assistant-connection.model.js';
-import { generateAssistantConnectionToken, hashAssistantConnectionToken } from './assistant-token.js';
+import {
+  generateAssistantConnectionToken,
+  hashAssistantConnectionToken,
+  encryptAssistantConnectionToken,
+  decryptAssistantConnectionToken,
+} from './assistant-token.js';
 import { BRIDGE_SCRIPT, POLLER_SCRIPT } from './claude-install-scripts.js';
 import {
   type ActiveProject,
@@ -300,17 +305,20 @@ export async function getClaudeSetup(user: UserDocument, req: Request) {
   await selectClaudeConnectionForUser(user);
   const connection = ensureSupportedClaudeConnection(await findClaudeConnectionForUser(user));
 
-  // If already connected with a valid token AND the poller is still alive,
-  // return the setup payload without rotating the token (which would kill the active poller).
-  // When the connection is stale (poller died), allow token regeneration.
+  // If already connected with a live poller, return the existing token (decrypted)
+  // so users can install on additional projects without rotating/killing the active poller.
   if (connection.status === 'connected' && connection.connectionTokenHash && !isConnectionStale(connection)) {
-    return buildClaudeSetupPayload(connection, null, getPublicBaseUrl(req));
+    const decryptedToken = connection.connectionTokenEncrypted
+      ? decryptAssistantConnectionToken(connection.connectionTokenEncrypted, env.JWT_SECRET)
+      : null;
+    return buildClaudeSetupPayload(connection, decryptedToken, getPublicBaseUrl(req));
   }
 
   const { rawToken, tokenHash, tokenPreview } = generateAssistantConnectionToken();
 
   connection.connectionTokenHash = tokenHash;
   connection.connectionTokenPreview = tokenPreview;
+  connection.connectionTokenEncrypted = encryptAssistantConnectionToken(rawToken, env.JWT_SECRET);
   connection.status = 'pending_connection';
   connection.authMethod = 'hook';
   applyConnectionMetadata(connection, { lastError: undefined });

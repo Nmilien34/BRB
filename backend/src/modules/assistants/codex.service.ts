@@ -8,7 +8,12 @@ import {
   type AssistantConnectionDocument,
   AssistantConnection,
 } from './assistant-connection.model.js';
-import { generateAssistantConnectionToken, hashAssistantConnectionToken } from './assistant-token.js';
+import {
+  generateAssistantConnectionToken,
+  hashAssistantConnectionToken,
+  encryptAssistantConnectionToken,
+  decryptAssistantConnectionToken,
+} from './assistant-token.js';
 import { BRIDGE_SCRIPT } from './codex-install-scripts.js';
 import { CODEX_POLLER_SCRIPT } from './codex-install-scripts.js';
 import {
@@ -164,13 +169,17 @@ export async function getCodexSetup(user: UserDocument, req: Request) {
   const connection = ensureSupportedCodexConnection(await findCodexConnectionForUser(user));
 
   if (connection.status === 'connected' && connection.connectionTokenHash && !isConnectionStale(connection)) {
-    return buildCodexSetupPayload(connection, null, getPublicBaseUrl(req));
+    const decryptedToken = connection.connectionTokenEncrypted
+      ? decryptAssistantConnectionToken(connection.connectionTokenEncrypted, env.JWT_SECRET)
+      : null;
+    return buildCodexSetupPayload(connection, decryptedToken, getPublicBaseUrl(req));
   }
 
   const { rawToken, tokenHash, tokenPreview } = generateAssistantConnectionToken();
 
   connection.connectionTokenHash = tokenHash;
   connection.connectionTokenPreview = tokenPreview;
+  connection.connectionTokenEncrypted = encryptAssistantConnectionToken(rawToken, env.JWT_SECRET);
   connection.status = 'pending_connection';
   connection.authMethod = 'hook';
   applyConnectionMetadata(connection, { lastError: undefined });
