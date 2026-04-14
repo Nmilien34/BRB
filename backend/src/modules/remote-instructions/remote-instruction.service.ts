@@ -284,7 +284,7 @@ export async function claimNextRemoteInstructionForClaude(
       remoteInstructionId: instruction.id,
       assistantConnectionId: String(assistantConnection._id),
     },
-    'Dispatched remote instruction to Claude bridge',
+    'Dispatched remote instruction to bridge',
   );
 
   return serializeRemoteInstruction(instruction);

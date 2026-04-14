@@ -393,7 +393,7 @@ export async function handleClaudeBridgeConnect(
 
   return {
     success: true,
-    assistantType: CLAUDE_ASSISTANT_TYPE,
+    assistantType: connection.assistantType,
     status: connection.status,
     awayModeEnabled: connection.awayModeEnabled,
     lastConnectedAt: connection.lastConnectedAt,
@@ -479,7 +479,7 @@ export async function ingestClaudeBridgeEvent(
         sourceEventId: String(sourceEvent._id),
         hookEventName: normalizedEvent.hookEventName,
       },
-      'Skipped approval creation because Claude event is not approval-relevant',
+      'Skipped approval creation because hook event is not approval-relevant',
     );
   }
 

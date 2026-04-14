@@ -189,9 +189,12 @@ export function determineClaudeBridgeAction(
   awayModeEnabled: boolean,
   normalizedEvent: NormalizedClaudeEvent,
 ): ClaudeBridgeAction {
-  if (!awayModeEnabled) {
-    return normalizedEvent.approvalCandidate ? 'log_only' : 'pass_through';
+  // Always block the bridge for PermissionRequests so the approval can be
+  // resolved remotely (via Telegram).  Away mode only controls whether
+  // Telegram delivery is immediate or delayed by the escalation timer.
+  if (normalizedEvent.approvalCandidate) {
+    return 'remote_candidate';
   }
 
-  return normalizedEvent.approvalCandidate ? 'remote_candidate' : 'log_only';
+  return awayModeEnabled ? 'log_only' : 'pass_through';
 }

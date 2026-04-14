@@ -1,9 +1,8 @@
 import type { Request } from 'express';
 import { env } from '../../config/index.js';
-import { User, type UserDocument } from '../users/user.model.js';
+import type { UserDocument } from '../users/user.model.js';
 import { advanceOnboardingStatus } from '../users/user.constants.js';
 import { serializeUser } from '../users/user.serializer.js';
-import { logger } from '../../utils/index.js';
 import { HttpError } from '../../utils/httpError.js';
 import {
   type AssistantConnectionDocument,
@@ -15,7 +14,6 @@ import { CODEX_POLLER_SCRIPT } from './codex-install-scripts.js';
 import {
   type AssistantConnectionMetadata,
   type AssistantConnectionStatus,
-  type PublicAssistantConnection,
   CONNECTION_STALE_THRESHOLD_MS,
 } from './assistant.constants.js';
 import { serializeAssistantConnection } from './assistant.serializer.js';
@@ -150,6 +148,10 @@ export async function selectCodexConnectionForUser(user: UserDocument) {
   }
 
   await connection.save();
+
+  user.selectedAssistantType = CODEX_ASSISTANT_TYPE;
+  user.onboardingStatus = advanceOnboardingStatus(user.onboardingStatus, 'assistant_selected');
+  await user.save();
 
   return {
     assistant: serializeAssistantConnection(connection),
