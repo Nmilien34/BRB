@@ -347,12 +347,7 @@ export default function Dashboard() {
                             </span>
                           )}
                         </div>
-                        {state.activeProjects.length > 0 && (
-                          <span className="dashboard-agent-project-names">
-                            {state.activeProjects.map((p) => p.name).join(', ')}
-                          </span>
-                        )}
-                        {!state.installUrl && (
+                        {(!state.installUrl || state.installUrl === 'connected') && (
                           <button
                             type="button"
                             className="dashboard-agent-add-project-btn"
@@ -363,6 +358,11 @@ export default function Dashboard() {
                           </button>
                         )}
                       </div>
+                      {state.activeProjects.length > 0 && (
+                        <span className="dashboard-agent-project-names">
+                          {state.activeProjects.map((p) => p.name).join(', ')}
+                        </span>
+                      )}
                       {state.installUrl && state.installUrl !== 'connected' && (
                         <div className="dashboard-agent-install">
                           <p className="dashboard-agent-install-label">Run in your next project directory:</p>

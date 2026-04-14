@@ -163,13 +163,14 @@ function buildClaudeSettingsSnippet(
     bridgeInstructionResultUrl +
     '" node ./brb-claude-bridge.js';
 
+  const hookEntry = { matcher: '*', hooks: [{ type: 'command', command: bridgeCommand }] };
   return JSON.stringify(
     {
       hooks: {
-        PermissionRequest: [{ matcher: '*', command: bridgeCommand }],
-        PreToolUse: [{ matcher: '*', command: bridgeCommand }],
-        PostToolUse: [{ matcher: '*', command: bridgeCommand }],
-        Stop: [{ matcher: '*', command: bridgeCommand }],
+        PermissionRequest: [hookEntry],
+        PreToolUse: [hookEntry],
+        PostToolUse: [hookEntry],
+        Stop: [hookEntry],
       },
     },
     null,
@@ -599,13 +600,14 @@ function buildInstallShellScript(config: {
     `BRB_INSTRUCTION_RESULT_URL="${config.instructionResultUrl}" ` +
     'node .brb/brb-claude-bridge.js';
 
+  const hookEntry = { matcher: '*', hooks: [{ type: 'command', command: bridgeCommand }] };
   const hooksJson = JSON.stringify(
     {
       hooks: {
-        PermissionRequest: [{ matcher: '*', command: bridgeCommand }],
-        PreToolUse: [{ matcher: '*', command: bridgeCommand }],
-        PostToolUse: [{ matcher: '*', command: bridgeCommand }],
-        Stop: [{ matcher: '*', command: bridgeCommand }],
+        PermissionRequest: [hookEntry],
+        PreToolUse: [hookEntry],
+        PostToolUse: [hookEntry],
+        Stop: [hookEntry],
       },
     },
     null,
@@ -641,34 +643,33 @@ POLLER_EOF
 
 chmod +x .brb/brb-claude-bridge.js .brb/brb-claude-poller.js
 
-# Write/merge Claude hooks config
-mkdir -p .claude
+# Write/merge Claude hooks into global ~/.claude/settings.json (trusted by Claude Code)
 cat > .brb/_brb_hooks.json << 'HOOKS_JSON_EOF'
 ${hooksJson}
 HOOKS_JSON_EOF
 
-if [ -f .claude/settings.json ]; then
-  # Merge BRB hooks into existing settings (preserves user's other config)
-  node --input-type=commonjs << 'MERGE_EOF'
+mkdir -p "$HOME/.claude"
+GLOBAL_SETTINGS="$HOME/.claude/settings.json"
+node --input-type=commonjs << 'MERGE_EOF'
 var fs = require("fs");
 var brb = JSON.parse(fs.readFileSync(".brb/_brb_hooks.json", "utf8"));
-var settingsPath = ".claude/settings.json";
+var settingsPath = process.env.HOME + "/.claude/settings.json";
 var existing = {};
 try { existing = JSON.parse(fs.readFileSync(settingsPath, "utf8")); } catch(e) {}
 var hooks = existing.hooks || {};
 Object.keys(brb.hooks || {}).forEach(function(key) {
   var arr = hooks[key] || [];
-  arr = arr.filter(function(h) { return (h.command || "").indexOf("brb-claude-bridge") === -1; });
+  arr = arr.filter(function(h) {
+    var nested = (h.hooks || []);
+    return !nested.some(function(n) { return (n.command || "").indexOf("brb-claude-bridge") !== -1; });
+  });
   arr = arr.concat(brb.hooks[key]);
   hooks[key] = arr;
 });
 existing.hooks = hooks;
 fs.writeFileSync(settingsPath, JSON.stringify(existing, null, 2) + "\\n");
 MERGE_EOF
-  echo "  Merged BRB hooks into existing .claude/settings.json"
-else
-  cp .brb/_brb_hooks.json .claude/settings.json
-fi
+echo "  Merged BRB hooks into global ~/.claude/settings.json"
 rm -f .brb/_brb_hooks.json
 
 # Write env config for the poller (restricted permissions)

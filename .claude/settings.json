@@ -3,25 +3,45 @@
     "PermissionRequest": [
       {
         "matcher": "*",
-        "command": "BRB_CONNECTION_TOKEN=\"ogNK7K1ZbRvF-ZP1BIs7xX1FYKXyE7lqDdpNbmm--JI\" BRB_CONNECT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "BRB_CONNECTION_TOKEN=\"ogNK7K1ZbRvF-ZP1BIs7xX1FYKXyE7lqDdpNbmm--JI\" BRB_CONNECT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
+          }
+        ]
       }
     ],
     "PreToolUse": [
       {
         "matcher": "*",
-        "command": "BRB_CONNECTION_TOKEN=\"ogNK7K1ZbRvF-ZP1BIs7xX1FYKXyE7lqDdpNbmm--JI\" BRB_CONNECT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "BRB_CONNECTION_TOKEN=\"ogNK7K1ZbRvF-ZP1BIs7xX1FYKXyE7lqDdpNbmm--JI\" BRB_CONNECT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
+          }
+        ]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "*",
-        "command": "BRB_CONNECTION_TOKEN=\"ogNK7K1ZbRvF-ZP1BIs7xX1FYKXyE7lqDdpNbmm--JI\" BRB_CONNECT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "BRB_CONNECTION_TOKEN=\"ogNK7K1ZbRvF-ZP1BIs7xX1FYKXyE7lqDdpNbmm--JI\" BRB_CONNECT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
+          }
+        ]
       }
     ],
     "Stop": [
       {
         "matcher": "*",
-        "command": "BRB_CONNECTION_TOKEN=\"ogNK7K1ZbRvF-ZP1BIs7xX1FYKXyE7lqDdpNbmm--JI\" BRB_CONNECT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "BRB_CONNECTION_TOKEN=\"ogNK7K1ZbRvF-ZP1BIs7xX1FYKXyE7lqDdpNbmm--JI\" BRB_CONNECT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/connect\" BRB_EVENTS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/events\" BRB_INSTRUCTIONS_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/next\" BRB_INSTRUCTION_RESULT_URL=\"https://be-right-back.onrender.com/api/assistants/claude/bridge/instructions/:instructionId/result\" node .brb/brb-claude-bridge.js"
+          }
+        ]
       }
     ]
   }

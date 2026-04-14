@@ -235,13 +235,14 @@ function buildCodexInstallShellScript(config: {
     `BRB_INSTRUCTION_RESULT_URL="${config.instructionResultUrl}" ` +
     'node .brb/brb-codex-bridge.js';
 
+  const hookEntry = { matcher: '*', hooks: [{ type: 'command', command: bridgeCommand }] };
   const hooksJson = JSON.stringify(
     {
       hooks: {
-        PermissionRequest: [{ matcher: '*', command: bridgeCommand }],
-        PreToolUse: [{ matcher: '*', command: bridgeCommand }],
-        PostToolUse: [{ matcher: '*', command: bridgeCommand }],
-        Stop: [{ matcher: '*', command: bridgeCommand }],
+        PermissionRequest: [hookEntry],
+        PreToolUse: [hookEntry],
+        PostToolUse: [hookEntry],
+        Stop: [hookEntry],
       },
     },
     null,
@@ -277,34 +278,32 @@ POLLER_EOF
 
 chmod +x .brb/brb-codex-bridge.js .brb/brb-codex-poller.js
 
-# Write/merge Codex hooks config
-mkdir -p .codex
+# Write/merge Codex hooks into global ~/.codex/settings.json (trusted by Codex)
 cat > .brb/_brb_codex_hooks.json << 'HOOKS_JSON_EOF'
 ${hooksJson}
 HOOKS_JSON_EOF
 
-if [ -f .codex/hooks.json ]; then
-  # Merge BRB hooks into existing hooks (preserves user's other config)
-  node --input-type=commonjs << 'MERGE_EOF'
+mkdir -p "$HOME/.codex"
+node --input-type=commonjs << 'MERGE_EOF'
 var fs = require("fs");
 var brb = JSON.parse(fs.readFileSync(".brb/_brb_codex_hooks.json", "utf8"));
-var hooksPath = ".codex/hooks.json";
+var settingsPath = process.env.HOME + "/.codex/settings.json";
 var existing = {};
-try { existing = JSON.parse(fs.readFileSync(hooksPath, "utf8")); } catch(e) {}
+try { existing = JSON.parse(fs.readFileSync(settingsPath, "utf8")); } catch(e) {}
 var hooks = existing.hooks || {};
 Object.keys(brb.hooks || {}).forEach(function(key) {
   var arr = hooks[key] || [];
-  arr = arr.filter(function(h) { return (h.command || "").indexOf("brb-codex-bridge") === -1; });
+  arr = arr.filter(function(h) {
+    var nested = (h.hooks || []);
+    return !nested.some(function(n) { return (n.command || "").indexOf("brb-codex-bridge") !== -1; });
+  });
   arr = arr.concat(brb.hooks[key]);
   hooks[key] = arr;
 });
 existing.hooks = hooks;
-fs.writeFileSync(hooksPath, JSON.stringify(existing, null, 2) + "\\n");
+fs.writeFileSync(settingsPath, JSON.stringify(existing, null, 2) + "\\n");
 MERGE_EOF
-  echo "  Merged BRB hooks into existing .codex/hooks.json"
-else
-  cp .brb/_brb_codex_hooks.json .codex/hooks.json
-fi
+echo "  Merged BRB hooks into global ~/.codex/settings.json"
 rm -f .brb/_brb_codex_hooks.json
 
 # Write env config for the poller (restricted permissions)
